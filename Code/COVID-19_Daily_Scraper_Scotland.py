@@ -529,7 +529,7 @@ df_CPT_x.to_excel(writer,sheet_name='CPT & DPC')
 writer.save()
 
 
-people = ['person1@email.com','person2@email.com]
+people = ['person1@email.com', 'person2@email.com']
 
 print(people)
 
