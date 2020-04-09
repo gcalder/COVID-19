@@ -353,11 +353,11 @@ geom_hline(yintercept = 0) + theme_minimal(base_size = 12)
 ```
 
 
-### Deaths per confirmed cases
+### Deaths per confirmed case
 
 ```{r, fig.width=5, fig.height=3}
 ggplot(scot_tests, aes(x = Date, y = deaths_per_case*100)) + geom_line(color = nice_red) + geom_point(color = nice_red) +
-labs(x="5", y = "%") +
+labs(x="", y = "%") +
 geom_hline(yintercept = 0) + theme_minimal(base_size = 12)
 ```
 

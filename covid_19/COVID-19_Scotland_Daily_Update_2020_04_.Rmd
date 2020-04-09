@@ -434,7 +434,7 @@ plot_ly(data = scot_tests, x = ~Date, y = ~cases_per_test*100, color = ~I(nice_b
     partial_bundle()
 ```
 
-### Deaths per confirmed cases
+### Deaths per confirmed case
 ```{r}
 plot_ly(data = scot_tests, x = ~Date, y = ~deaths_per_case*100, color = ~I(nice_red), type = "scatter", mode = "lines+markers", 
                hovertemplate = paste('Date: %{x}',
