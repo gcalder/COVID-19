@@ -11,13 +11,11 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 library(flexdashboard) ; library(shiny) ; library(readr); library(dplyr); library(tidyr); library(purrr); library(forcats); library(stringr); library(htmlwidgets); library(lubridate); library(sf); library(RcppRoll); library(plotly); library(shinythemes);library(leaflet); library(classInt); library(ggrepel); library(scales); library(leaflet.extras); library(RColorBrewer);
 library(colorblindr); library(readxl)
 
-# Import Scottish Population Data
-WATTY62POP <- "https://raw.githubusercontent.com/watty62/Scot_covid19/master/data/processed/HB_Populations.csv"
-scot_pop <- read_csv(file =WATTY62POP )
 
 # Import Scottish covid data
+path <- "COVID-19_Scotland_data_all_2020-04-09.xlsx" 
 # Scottish cases data
-scot_data_raw <- read_excel("COVID-19_Scotland_data_all_2020-04-08.xlsx", sheet = "Cases By Health Board", skip = 1)
+scot_data_raw <- read_excel(path, sheet = "Cases By Health Board", skip = 1)
 scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrease")) %>%
               rename(confirmed_cases= Total,
                      Date = Health_Board) %>%
@@ -25,7 +23,7 @@ scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrea
               select(-Date)
   
 scot_data_raw$date[nrow(scot_data_raw)] <- scot_data_raw$date[nrow(scot_data_raw)-1] + days(1)
-scot_data_raw$confirmed_cases[nrow(scot_data_raw)] <- 4565 ## REMOVE
+#scot_data_raw$confirmed_cases[nrow(scot_data_raw)] <- 4565 ## REMOVE
 
 scot_data <- scot_data_raw %>%
              mutate(new_cases = confirmed_cases - replace_na(lag(confirmed_cases),0)) %>%
@@ -44,13 +42,13 @@ scot_data_health_board <- scot_data %>%
 
 # Per health board for map
 # Cumulative incidence
-scot_ci_hb <- read_excel("COVID-19_Scotland_data_all_2020-04-08.xlsx", sheet = "Cumulative Incidence Grouped") %>%
+scot_ci_hb <- read_excel(path, sheet = "Cumulative Incidence Grouped") %>%
   slice(nrow(.)) %>%
   select(Ayrshire:Tayside) %>%
   pivot_longer(Ayrshire:Tayside, names_to = "health_board", values_to = "cumulative_incidence")
 
 # Incidence over last day
-scot_ti_hb <- read_excel("COVID-19_Scotland_data_all_2020-04-08.xlsx", sheet = "Incidence by Health Board") %>%
+scot_ti_hb <- read_excel(path, sheet = "Incidence by Health Board") %>%
   slice(nrow(.)) %>%
   select(Ayrshire:Tayside) %>%
   pivot_longer(Ayrshire:Tayside, names_to = "health_board", values_to = "today_incidence")
@@ -61,7 +59,7 @@ scot_data_health_board_total <- scot_data_health_board %>%
                                 left_join(scot_ci_hb)
 
 # Scottish death data
-scot_deaths <- read_excel("COVID-19_Scotland_data_all_2020-04-08.xlsx", sheet = "Scotland Deaths", skip = 1) %>%
+scot_deaths <- read_excel(path, sheet = "Scotland Deaths", skip = 1) %>%
   rename("deaths" = Deaths_Cum, 
          "new_deaths" = Deaths_New) %>%
   mutate(doubling_time_week = 7*log(2)/log(deaths/replace_na(lag(deaths,7),0))) %>%
@@ -70,8 +68,8 @@ scot_deaths <- read_excel("COVID-19_Scotland_data_all_2020-04-08.xlsx", sheet = 
 scot_deaths$date[nrow(scot_deaths)] <- scot_deaths$date[nrow(scot_deaths)-1] + days(1)
 
 # Scottish tests
-scot_tests <- read_excel("COVID-19_Scotland_data_all_2020-04-08.xlsx", sheet = "CPT & DPC") 
-scot_tests$Cases[nrow(scot_tests)] <- 4565 #REMOVE
+scot_tests <- read_excel(path, sheet = "CPT & DPC") 
+#scot_tests$Cases[nrow(scot_tests)] <- 4565 #REMOVE
 
 scot_tests  <- scot_tests %>%
   rename("Conducted" = Tests, 
@@ -112,21 +110,19 @@ nice_red <- palette_OkabeIto[6]
 
 Here is the daily report for COVID-19 in Scotland for `r weekdays(max(scot_data$date))`, `r format(max(scot_data$date), '%d %B %Y')`. For the full dashboard, including comparisons with other countries, please visit [here](https://smazeri.shinyapps.io/Covid19_Scotland "COVID-19 Scotland").
 
+
 **Deaths:** <br/>
 The death toll is currently `r max(scot_deaths$deaths, na.rm = TRUE)`. <br/>
-The number of new deaths reported today was `r scot_deaths$new_deaths[nrow(scot_deaths)]`, which represents a `r round(100*(scot_deaths$deaths[nrow(scot_deaths)]-scot_deaths$deaths[nrow(scot_deaths)-1])/scot_deaths$deaths[nrow(scot_deaths)-1],1)`% increase on yesterday's total. <br/>
-The doubling time for deaths over the past 7 days was `r round(scot_deaths$doubling_time_week[nrow(scot_deaths)],1)` days.
+The number of new deaths reported today was `r scot_deaths$new_deaths[nrow(scot_deaths)]`, which represents a `r formatC(round(100*(scot_deaths$deaths[nrow(scot_deaths)]-scot_deaths$deaths[nrow(scot_deaths)-1])/scot_deaths$deaths[nrow(scot_deaths)-1],1), format='f', digits=1 )`% increase on yesterday's total. <br/>
+The doubling time for deaths over the past 7 days was `r formatC(round(scot_deaths$doubling_time_week[nrow(scot_deaths)],1), format='f', digits=1 )` days.
 
 **Cases:** <br/>
 The total number of cases is currently `r comma(scot_data$confirmed_cases[nrow(scot_data)])`. <br/> 
-The number of new cases today is `r scot_data$new_cases[nrow(scot_data)]`, which represents a `r round(100*(scot_data$confirmed_cases[nrow(scot_data)]-scot_data$confirmed_cases[nrow(scot_data)-1])/scot_data$confirmed_cases[nrow(scot_data)-1],1)`% increase on yesterday's total. <br/>
-The doubling time for the number of cases over the past 7 days was `r round(scot_data$doubling_time_week[nrow(scot_data)],1)` days.
+The number of new cases today is `r scot_data$new_cases[nrow(scot_data)]`, which represents a `r formatC(round(100*(scot_data$confirmed_cases[nrow(scot_data)]-scot_data$confirmed_cases[nrow(scot_data)-1])/scot_data$confirmed_cases[nrow(scot_data)-1],1), format='f', digits=1 )`% increase on yesterday's total. <br/>
+The doubling time for the number of cases over the past 7 days was `r formatC(round(scot_data$doubling_time_week[nrow(scot_data)],1), format='f', digits=1 )` days.
 
 ```{r}
 data_incidence <- scot_data_health_board %>%
-  left_join(scot_pop, by = c("health_board" = "Name")) %>%
-  mutate(cumulative_incidence = 10000* confirmed_cases/Population, 
-         day_incidence = 10000*new_cases/Population) %>%
   group_by(health_board) %>%
   arrange(date) %>%
   mutate(relative_increase_cases = 100*(confirmed_cases - replace_na(lag(confirmed_cases),0))/replace_na(lag(confirmed_cases),0)) %>%
@@ -137,19 +133,21 @@ data_incidence <- scot_data_health_board %>%
 data_incidence_today <- subset(data_incidence, date == max(scot_data$date))
 ```
 
+
 **Cases per capita (measured per 10,000 head of population):** <br/>
-The highest incidence over the last day was `r round(max(scot_ti_hb$today_incidence),1)`, which occurred in `r subset(scot_ti_hb, today_incidence == max(scot_ti_hb$today_incidence))$health_board`. <br/>
-The highest cumulative incidence is `r round(max(scot_ci_hb$cumulative_incidence),1)`, which is in `r subset(scot_ci_hb, cumulative_incidence == max(scot_ci_hb$cumulative_incidence))$health_board`.
+The highest incidence over the last day was `r formatC(round(max(scot_ti_hb$today_incidence),1), format='f', digits=1 )`, which occurred in `r subset(scot_ti_hb, today_incidence == max(scot_ti_hb$today_incidence))$health_board`. <br/>
+The highest cumulative incidence is `r formatC(round(max(scot_ci_hb$cumulative_incidence),1), format='f', digits=1 )`, which is in `r subset(scot_ci_hb, cumulative_incidence == max(scot_ci_hb$cumulative_incidence))$health_board`.
 
 **Health Boards\*:** <br/>
 The largest increase in cases in absolute terms by health board was `r max(data_incidence_today$new_cases)` cases, which occurred in `r subset(data_incidence_today, new_cases == max(data_incidence_today$new_cases))$health_board`. <br/>
-The largest relative increase in cases was `r round(max(data_incidence_today$relative_increase_cases),1)`%, which occurred in `r subset(data_incidence_today, relative_increase_cases == max(data_incidence_today$relative_increase_cases))$health_board`. <br/>
-The fastest doubling time over the past 7 days was `r format(round(min(subset(data_incidence_today, doubling_time_week>0)$doubling_time_week)),nsmall = 1)` days, which occurred in `r subset(data_incidence_today, doubling_time_week == min(subset(data_incidence_today, doubling_time_week>0)$doubling_time_week))$health_board`.
+The largest relative increase in cases was `r formatC(round(max(data_incidence_today$relative_increase_cases),1),format='f', digits=1)`%, which occurred in `r subset(data_incidence_today, relative_increase_cases == max(data_incidence_today$relative_increase_cases))$health_board`. <br/>
+The fastest doubling time over the past 7 days was `r formatC(round(min(subset(data_incidence_today, doubling_time_week>0)$doubling_time_week)),format='f', digits=1)` days, which occurred in `r subset(data_incidence_today, doubling_time_week == min(subset(data_incidence_today, doubling_time_week>0)$doubling_time_week))$health_board`.
+<!-- format(round(min(subset(data_incidence_today, doubling_time_week>0)$doubling_time_week)),nsmall = 1)-->
 
 **Tests:** <br/>
 The total number of tests reported is `r comma(scot_tests$Conducted[nrow(scot_tests)])`. <br/>
 The total number of positive cases to date is `r comma(scot_tests[nrow(scot_tests),"Total Positive"][[1]])`. <br/>
-The percentage of tests which were positive is currently `r round(100*scot_tests[nrow(scot_tests),"Total Positive"]/scot_tests$Conducted[nrow(scot_tests)],1)[[1]]`%.
+The percentage of tests which were positive is currently `r formatC(round(100*scot_tests[nrow(scot_tests),"Total Positive"]/scot_tests$Conducted[nrow(scot_tests)],1)[[1]],format='f', digits=1 )`%.
 
 <br> 
 
@@ -158,6 +156,7 @@ The percentage of tests which were positive is currently `r round(100*scot_tests
 The data in this report are provided by Health Protection Scotland and published daily by the Scottish Government [here](https://www.gov.scot/coronavirus-covid-19/ "gov.scot/coronavirus-covid-19/"). This report has been compiled in collaboration between members of the [Epigroup](https://www.wiki.ed.ac.uk/display/Epigroup/People "Epigroup website") and [EERA](https://www.ed.ac.uk/roslin/eeragroup "EERA website") groups at the University of Edinburgh. 
 
 <br> 
+
 
 ## Plots
 ### Confirmed cases
@@ -196,7 +195,8 @@ fig1 <-plot_ly(data = scot_data, x = ~date, y = ~new_cases, text = ~new_cases, c
         type = 'date',
         tickformat = "%d %B", 
         title = ""), 
-        yaxis = list(title = "")) 
+        yaxis = list(title = "")) %>%
+    partial_bundle()
 
 fig2 <- plot_ly(data = scot_data, x = ~date, y = ~confirmed_cases, color = ~I(nice_blue), type = "scatter", mode = "lines+markers", 
                hovertemplate = paste('Date: %{x}',
@@ -210,7 +210,8 @@ config(displayModeBar = FALSE)  %>%
         yaxis = list(title = "",
                      range=c(0,max(scot_data$confirmed_cases) + 5),
                      tickformat = "digit"),
-        showlegend = FALSE) 
+        showlegend = FALSE) %>%
+    partial_bundle()
 
 subplot(fig1, fig2, nrows = 2, margin = 0.07)
 ```
@@ -355,7 +356,8 @@ w <- ggplotly(p) %>%
       x = 0, 
       y = max(ts$cases)
       )
-    )
+    ) %>%
+    partial_bundle()
 
 #w$x$data
 
@@ -367,7 +369,7 @@ w #%>%
 
 ### Map
 
-```{r}
+```{r, eval = TRUE}
   breaks <- classIntervals(cases_by_area$confirmed_cases, n = 4, style = "jenks")$brks
   pal <- colorBin(palette = "Blues", domain = NULL, bins = breaks, na.color = "#FFFFFF")
     breaks <- classIntervals(cases_by_area$cumulative_incidence, n = 4, style = "jenks")$brks
@@ -413,12 +415,13 @@ plot_ly(data = scot_tests_long, x = ~Date, y = ~Number, text = ~`Conducted today
         title = ""), 
         yaxis = list(title = "",
                      tickformat = "digit"),
-        legend = list(x = 0.1, y = 0.9))
+        legend = list(x = 0.1, y = 0.9)) %>%
+    partial_bundle()
 ```
 
 ### Confirmed cases per test conducted
 ```{r}
-plot_ly(data = scot_tests, x = ~Date, y = ~cases_per_test, color = ~I(nice_blue), type = "scatter", mode = "lines+markers", 
+plot_ly(data = scot_tests, x = ~Date, y = ~cases_per_test*100, color = ~I(nice_blue), type = "scatter", mode = "lines+markers", 
                hovertemplate = paste('Date: %{x}',
                         '<br>Cases per test: %{y:.2f}<extra></extra>')) %>%
   config(displayModeBar = FALSE)  %>%
@@ -426,13 +429,14 @@ plot_ly(data = scot_tests, x = ~Date, y = ~cases_per_test, color = ~I(nice_blue)
         type = 'date',
         tickformat = "%d %B", 
         title = ""), 
-        yaxis = list(title = ""),
-        showlegend = FALSE) 
+        yaxis = list(title = "%"),
+        showlegend = FALSE) %>%
+    partial_bundle()
 ```
 
 ### Deaths per confirmed cases
 ```{r}
-plot_ly(data = scot_tests, x = ~Date, y = ~deaths_per_case, color = ~I(nice_red), type = "scatter", mode = "lines+markers", 
+plot_ly(data = scot_tests, x = ~Date, y = ~deaths_per_case*100, color = ~I(nice_red), type = "scatter", mode = "lines+markers", 
                hovertemplate = paste('Date: %{x}',
                         '<br>Deaths per case: %{y:.2f}<extra></extra>')) %>%
   config(displayModeBar = FALSE)  %>%
@@ -440,7 +444,7 @@ plot_ly(data = scot_tests, x = ~Date, y = ~deaths_per_case, color = ~I(nice_red)
         type = 'date',
         tickformat = "%d %B", 
         title = ""), 
-        yaxis = list(title = ""),
+        yaxis = list(title = "%"),
         showlegend = FALSE) %>%
     partial_bundle()
 ```
