@@ -141,7 +141,7 @@ The highest cumulative incidence is `r formatC(round(max(scot_ci_hb$cumulative_i
 **Health Boards\*:** <br/>
 The largest increase in cases in absolute terms by health board was `r max(data_incidence_today$new_cases)` cases, which occurred in `r subset(data_incidence_today, new_cases == max(data_incidence_today$new_cases))$health_board`. <br/>
 The largest relative increase in cases was `r formatC(round(max(data_incidence_today$relative_increase_cases),1),format='f', digits=1)`%, which occurred in `r subset(data_incidence_today, relative_increase_cases == max(data_incidence_today$relative_increase_cases))$health_board`. <br/>
-The fastest doubling time over the past 7 days was `r formatC(round(min(subset(data_incidence_today, doubling_time_week>0)$doubling_time_week)),format='f', digits=1)` days, which occurred in `r subset(data_incidence_today, doubling_time_week == min(subset(data_incidence_today, doubling_time_week>0)$doubling_time_week))$health_board`.
+The fastest doubling time over the past 7 days was `r formatC(round(min(subset(data_incidence_today, doubling_time_week>0)$doubling_time_week),1),format='f', digits=1)` days, which occurred in `r subset(data_incidence_today, doubling_time_week == min(subset(data_incidence_today, doubling_time_week>0)$doubling_time_week))$health_board`.
 <!-- format(round(min(subset(data_incidence_today, doubling_time_week>0)$doubling_time_week)),nsmall = 1)-->
 
 **Tests:** <br/>
