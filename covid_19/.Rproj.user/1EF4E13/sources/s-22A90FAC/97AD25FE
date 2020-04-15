@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1586600187507.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "97AD25FE",
+    "lastKnownWriteTime" : 1586531822,
+    "last_content_update" : 1586531822,
+    "path" : "~/Documents/GitHub/COVID-19/covid_19/COVID-19_Scotland_Daily_Update.Rmd",
+    "project_path" : "COVID-19_Scotland_Daily_Update.Rmd",
+    "properties" : {
+        "cursorPosition" : "183,19",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}
