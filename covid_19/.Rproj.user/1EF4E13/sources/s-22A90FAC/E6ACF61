@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1586530419046.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "E6ACF61",
+    "lastKnownWriteTime" : 1586612927,
+    "last_content_update" : 1586612927456,
+    "path" : "~/Documents/GitHub/COVID-19/covid_19/render_reports.R",
+    "project_path" : "render_reports.R",
+    "properties" : {
+        "cursorPosition" : "17,47",
+        "scrollLine" : "15",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
