@@ -7,15 +7,17 @@ import re
 from urllib.request import urlopen
 
 import dropbox
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
+from matplotlib import pyplot
+import numpy
+import pandas
 from bs4 import BeautifulSoup
 from cycler import cycler
 from ipynb.fs.full.Fx_Send_Daily_Report import send_daily_report
 from pylab import rcParams
 
-plt.style.use("fivethirtyeight")
+from .constants import SCOT_GOV_URL
+
+pyplot.style.use("fivethirtyeight")
 
 get_ipython().run_line_magic("matplotlib", "inline")
 
@@ -45,6 +47,48 @@ def construct_email_contents_text(human_readable_datetime, death_totals, test_to
     )
 
 
+def get_date_time_values():
+    # TODO: Investigate the differences between datetime.datetime.now() and date.today()
+    datetime_today = date.today()
+    datetime_yesterday = datetime_today - timedelta(days=1)
+    datetime_today_human_readable = datetime.datetime.now().strftime("%A %d %B %Y")
+    return datetime_today, datetime_yesterday, datetime_today_human_readable
+
+
+def calculate_doubling_time(date_today, cases_today, cases_last_week):
+    # Calculate the doubling time for this week
+    time_change = date_today - timedelta(days=7)
+    doubling_time = time_change * numpy.log(cases_last_week/cases_today)
+    return doubling_time
+
+
+"""
+    df_tDt = df_x2
+    cols = [0, -1, -2]
+    df_tDt_Total = df_tDt.drop(df_tDt.columns[[cols], ], axis=1)
+    df_tDt_Total = df_tDt_Total.tail(1)
+    # Set Date Values
+    t1 = dx_Dt
+    t2 = tDt
+    # Calculate index position of dates
+    z1 = -(abs((tDt - t1).days) + 1)
+    z2 = -(abs((tDt - t2).days) + 1)
+    # Return corresponding cases numbers for dates selected
+    q1 = df_tDt_Total.iloc[0][z1]
+    q2 = df_tDt_Total.iloc[0][z2]
+    tx = abs((t2 - t1).days)
+    qx = numpy.log(q2 / q1)
+    ln2 = numpy.log(2)
+    Td_C = round(tx * (ln2 / qx), 1)
+    txt_Dt_Cases = ("The doubling time for the number of cases over the past 7 days was {} days.".format(Td_C))
+"""
+
+
+def get_soup(url=SCOT_GOV_URL):
+    # Fetch the page and encapsulate it using BS
+    html = urlopen(url)
+    return BeautifulSoup(html, "lxml")
+
 new_prop_cycle = cycler(
     "color", [
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b",
@@ -52,19 +96,15 @@ new_prop_cycle = cycler(
     ]
 )
 
-plt.rc("axes", prop_cycle=new_prop_cycle)
-plt.rcParams["axes.facecolor"] = "white"
-plt.rcParams["savefig.facecolor"] = "white"
+pyplot.rc("axes", prop_cycle=new_prop_cycle)
+pyplot.rcParams["axes.facecolor"] = "white"
+pyplot.rcParams["savefig.facecolor"] = "white"
+
 
 # Get datetime values
-tDt = date.today()
-yDt = tDt - timedelta(days=1)
-tDt_human = datetime.datetime.now().strftime("%A %d %B %Y")
+date_today, yDt, tDt_human = get_date_time_values()
 
-# Fetch the page and encapsulate it using BS
-url = "https://www.gov.scot/coronavirus-covid-19/"
-html = urlopen(url)
-soup = BeautifulSoup(html, "lxml")
+soup = get_soup()
 
 text = soup.get_text()
 rows = soup.find_all("tr")
@@ -81,7 +121,7 @@ for row in rows:
     clean2 = (re.sub(clean, "", str_cells))
     list_rows.append(clean2)
 
-df_0 = pd.DataFrame(list_rows)
+df_0 = pandas.DataFrame(list_rows)
 df_1 = df_0[0].str.split(",", expand=True)
 df_1[0] = df_1[0].str.strip("[")
 df_1.head(10)
@@ -90,10 +130,10 @@ all_header = []
 col_str = str(col_labels)
 cleantext2 = BeautifulSoup(col_str, "lxml").get_text()
 all_header.append(cleantext2)
-df_2 = pd.DataFrame(all_header)
+df_2 = pandas.DataFrame(all_header)
 df_3 = df_2[0].str.split(",", expand=True)
 frames = [df_3, df_1]
-df_4 = pd.concat(frames)
+df_4 = pandas.concat(frames)
 df_5 = df_4.rename(columns=df_4.iloc[0])
 df_6 = df_5.dropna(axis=0, how="any")
 df_7 = df_6.drop(df_6.index[0])
@@ -124,11 +164,13 @@ df_7 = df_7.rename({"Highland": "Highland and Western Isles"}, axis=1)
 df_7b = df_7.transpose()
 df_7b = df_7b.reset_index()
 # Force Ayrshire and Arran to Ayrshire
-df_7b.iloc[0,0] = "Ayrshire"
+df_7b.iloc[0, 0] = "Ayrshire"
 
 
 # Import Yesterday"s Case Data
-df_yDt = pd.read_excel(r"filepath\Daily_Reports\SARS-Cov-2-Scotland-{}_raw.xlsx".format(yDt), sheet_name="Total Cases")
+df_yDt = pandas.read_excel(
+    r"filepath\Daily_Reports\SARS-Cov-2-Scotland-{}_raw.xlsx".format(yDt), sheet_name="Total Cases"
+)
 # Drop last two and first column
 cols = [0,-1,-2]
 df_yDt = df_yDt.drop(df_yDt.columns[[cols], ], axis=1)
@@ -138,7 +180,7 @@ df_yDt = df_yDt.drop(df_yDt.columns[[cols], ], axis=1)
 mapper = lambda x: x.strftime("%Y-%m-%d") if isinstance(x, datetime.datetime) else x
 df_yDt.columns = df_yDt.columns.map(mapper)
 # Merge today"s data with yesterday"s
-df_x = pd.merge(df_yDt, df_7b, how="right")
+df_x = pandas.merge(df_yDt, df_7b, how="right")
 df_x = df_x.rename(columns={"Positive_Cases": tDt})
 
 # Deal with DateTime formatting
@@ -148,8 +190,8 @@ df_x.columns = df_x.columns.map(mapper)
 df_x2=df_x.fillna(0)
 
 # Total sum per column (except Health_Board)
-df_x2.loc["Total"]= df_x.iloc[:, 1:].sum(axis=0)
-df_x2 = df_x2.replace(np.nan, "Total", regex=True)
+df_x2.loc["Total"] = df_x.iloc[:, 1:].sum(axis=0)
+df_x2 = df_x2.replace(numpy.nan, "Total", regex=True)
 
 # Process data for plotting
 # TODO: Why is this defined without usage?
@@ -161,7 +203,7 @@ df_plot2 = df_plot.drop(["Health_Board"], axis=1)
 df_plot2 = df_plot2.transpose()
 
 # Import Yesterday"s Death Data
-df_Deaths = pd.read_excel(
+df_Deaths = pandas.read_excel(
     r"filepath\Daily_Reports\SARS-Cov-2-Scotland-{}_deaths_raw.xlsx".format(yDt), sheet_name="Deaths"
 )
 # Drop first column
@@ -195,7 +237,7 @@ df_Deaths3 = df_Deaths2.transpose()
 df_Deaths4 = df_Deaths3.drop(["Date"])
 df_Deaths4.columns = ["Deaths"]
 # Merge Death Data and Case Data
-df_casesDeaths = pd.merge(df_plot2, df_Deaths4, how="left",  left_index=True, right_index=True)
+df_casesDeaths = pandas.merge(df_plot2, df_Deaths4, how="left",  left_index=True, right_index=True)
 df_casesDeaths = df_casesDeaths.rename(columns={"Total": "Cases"})
 
 # Remove year from date
@@ -227,7 +269,7 @@ fig.savefig(r"filepath\Daily_Reports\COVID-19_Scotland_casesDeaths_Plot_{}.png".
 # Find number of new cases today, by Health_Board
 df_Old = df_x2.iloc[:, [0, -2]]
 df_New = df_x2.iloc[:, [0, -1]]
-df_Join = pd.merge(df_Old, df_New, how="right", on=["Health_Board"])
+df_Join = pandas.merge(df_Old, df_New, how="right", on=["Health_Board"])
 df_Join["newCases"] = (df_Join.iloc[:, -1]-df_Join.iloc[:, -2])
 
 # What is the total increase in case numbers across the whole country?
@@ -305,8 +347,7 @@ Doubling time calculations
 Cases
 """
 
-# Set date value for look back
-dx_Dt = tDt - timedelta(days=7)
+
 
 # watch out for date (using yDt for dev, should be tDt in prod)
 df_tDt = df_x2
@@ -334,8 +375,8 @@ z2 = -(abs((tDt - t2).days)+1)
 q1 = df_tDt_Total.iloc[0][z1]
 q2 = df_tDt_Total.iloc[0][z2]
 tx = abs((t2 - t1).days)
-qx = np.log(q2/q1)
-ln2 = np.log(2)
+qx = numpy.log(q2/q1)
+ln2 = numpy.log(2)
 Td_C = round(tx * (ln2/qx), 1)
 txt_Dt_Cases = ("The doubling time for the number of cases over the past 7 days was {} days.".format(Td_C))
 
@@ -355,8 +396,8 @@ q1 = df_Deaths2.iloc[0][z1]
 q2 = df_Deaths2.iloc[0][z2]
 
 tx = abs((t2 - t1).days)
-qx = np.log(q2/q1)
-ln2 = np.log(2)
+qx = numpy.log(q2/q1)
+ln2 = numpy.log(2)
 Td_D = round(tx * (ln2/qx), 1)
 
 txt_Dt_Deaths = ("The doubling time for deaths over the past 7 days was {} days.".format(Td_D))
@@ -364,12 +405,12 @@ txt_Dt_Deaths = ("The doubling time for deaths over the past 7 days was {} days.
 # ****************************************Calculate Per Capita Metrics***********************************************
 
 # Bring in population size data
-df_pop = pd.read_csv(r"C:\Users\gcalder2\Daily_Reports\Scotland_Population_Size_By_HealthBoard_Grouped.csv")
+df_pop = pandas.read_csv(r"C:\Users\gcalder2\Daily_Reports\Scotland_Population_Size_By_HealthBoard_Grouped.csv")
 # Set string for Ayshire and Arran
 df_pop.iloc[0, 0] = "Ayrshire"
 
 # Merge pop data with case data
-df_pop2 = pd.merge(df_tDt, df_pop, how="right").sort_values("Health_Board")
+df_pop2 = pandas.merge(df_tDt, df_pop, how="right").sort_values("Health_Board")
 df_pop2 = df_pop2.fillna(0)
 
 # Drop last two and first column
@@ -430,7 +471,7 @@ df_xT.to_excel(r"filepath\Daily_Reports\SARS-Cov-2-Scotland-{}_cases_trans.xlsx"
 rcParams["figure.figsize"] = 11, 11
 
 # Import Today"s Case Data
-df_tDt = pd.read_excel(r"filepath\Daily_Reports\SARS-Cov-2-Scotland-{}_Raw.xlsx".format(tDt), sheet_name="Total Cases")
+df_tDt = pandas.read_excel(r"filepath\Daily_Reports\SARS-Cov-2-Scotland-{}_Raw.xlsx".format(tDt), sheet_name="Total Cases")
 # Drop last two columns and last row
 cols = [0, -1, -2]
 df_multi = df_tDt.drop(df_tDt.columns[[cols], ], axis=1)
@@ -533,18 +574,18 @@ print(txt_omni)
 rcParams["figure.figsize"] = 12, 12
 
 
-df_CPT_Old = pd.read_excel(r"C:\Users\gcalder2\Daily_Reports\COVID-19_Scotland_CPT_DPC_{}.xlsx".format(yDt))
+df_CPT_Old = pandas.read_excel(r"C:\Users\gcalder2\Daily_Reports\COVID-19_Scotland_CPT_DPC_{}.xlsx".format(yDt))
 
 data_CPT_new = {
     "Date": [tDt], "Cases": [y], "Deaths": [tot_deaths], "Tests": [tot],
     "CPT": [round(y/tot, 5)], "DPC": [round(tot_deaths/y, 5)]
 }
-df_CPT_New = pd.DataFrame(data=data_CPT_new)
+df_CPT_New = pandas.DataFrame(data=data_CPT_new)
 df_CPT = df_CPT_Old.append(df_CPT_New)
 
 
 df_CPT = df_CPT.reset_index()
-df_CPT["Date"] = pd.to_datetime(df_CPT["Date"])
+df_CPT["Date"] = pandas.to_datetime(df_CPT["Date"])
 # Drop old index column
 df_CPT2 = df_CPT.drop(df_CPT.columns[0, ], axis=1)
 df_CPT2_Plot = df_CPT2[["Date", "CPT", "DPC"]]
@@ -574,7 +615,7 @@ df_CPT_x.to_excel(
 
 
 # Create a Pandas Excel writer using XlsxWriter as the engine.
-writer = pd.ExcelWriter(r"filepath\Daily_Reports\COVID-19_Scotland_data_all_{}.xlsx".format(tDt), engine="xlsxwriter")
+writer = pandas.ExcelWriter(r"filepath\Daily_Reports\COVID-19_Scotland_data_all_{}.xlsx".format(tDt), engine="xlsxwriter")
 # Write each dataframe to a different worksheet in the same file
 df_Deaths_XTran.to_excel(writer, sheet_name="Scotland Deaths")
 df_xT.to_excel(writer, sheet_name="Cases By Health Board")
