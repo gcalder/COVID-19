@@ -118,13 +118,6 @@ gr_newcases_hb <- scot_data_health_board %>% rename("outcome" = confirmed_cases)
                significance()
 ```
 
-
-
-
-
-
-## Overall update
-
 Here is the daily report for COVID-19 in Scotland for `r weekdays(max(scot_data$date))`, `r format(max(scot_data$date), '%d %B %Y')`. For the full dashboard, including comparisons with other countries, please visit [here](https://smazeri.shinyapps.io/Covid19_Scotland "COVID-19 Scotland").
 
 
