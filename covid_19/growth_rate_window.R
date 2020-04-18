@@ -85,7 +85,8 @@ significance <- function(df){
     sig <- !inside.range(x =1, r = c(df$lci_growth[i], df$uci_growth[i]))
     significant <- c(significant, sig)
   }
-  df$significance <- paste(if_else(significant, "significantly", "not significantly"), df$comparison[i], 0, sep = " ")
+  df$significance <- paste(if_else(significant, "significantly", "not significantly"), df$comparison, 0, sep = " ")
+  df$significance[df$significance %in% c("not significantly less than 0", "not significantly greater than 0") ] <- "not significantly different to 0"
   return(df)
 }
 
