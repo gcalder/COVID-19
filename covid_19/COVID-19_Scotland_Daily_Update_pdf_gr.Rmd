@@ -1,6 +1,6 @@
 ---
 title: "COVID-19 Scotland daily update"
-date: "`r format(Sys.time(), '%d %B, %Y')`" 
+date: "`r format(Sys.time()-86400, '%d %B, %Y')`" 
 output: pdf_document
 urlcolor: blue
 ---
@@ -15,7 +15,7 @@ library(colorblindr); library(readxl); library(spatstat.utils)
 source("growth_rate_window.R")
 # Import Scottish covid data
 #path <- "COVID-19_Scotland_data_all_2020-04-10.xlsx" 
-path <- paste0("COVID-19_Scotland_data_all_", {Sys.Date()}, ".xlsx") 
+path <- paste0("COVID-19_Scotland_data_all_", {Sys.Date()-1}, ".xlsx") 
 # Scottish cases data
 scot_data_raw <- read_excel(path, sheet = "Cases By Health Board", skip = 1)
 scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrease")) %>%
@@ -109,16 +109,20 @@ nice_red <- palette_OkabeIto[6]
 gr_newcases <- growth_rates(dat = scot_data %>% rename("outcome" = new_cases)) %>%
                filter(date >= ymd("2020-03-23")) %>%
                significance()
-gr_newdeaths <- growth_rates(dat = scot_deaths %>% rename("outcome" = deaths)) %>%
+gr_newdeaths <- growth_rates(dat = scot_deaths %>% rename("outcome" = new_deaths)) %>%
                filter(date >= ymd("2020-03-23")) %>%
                significance()
-gr_newcases_hb <- scot_data_health_board %>% rename("outcome" = confirmed_cases) %>%
+gr_newcases_hb <- scot_data_health_board %>% rename("outcome" = new_cases) %>%
    group_by(health_board) %>%
    nest() %>%
    mutate(gr = map(data, ~growth_rates(dat = .x))) %>%
    unnest(gr) %>%
    filter(date >= ymd("2020-03-23")) %>%
-               significance()
+               significance() %>%
+  mutate(symbol = case_when(significance == "not significantly different to 0" ~ "not sig <>0",
+                            significance == "not significantly different to 0" ~ "not sig <>0",
+                            significance == "significantly greater than 0" ~ "sig >0",
+                            significance == "significantly less than 0" ~ "sig <0"))
 ```
 
 
@@ -420,7 +424,9 @@ fig2 <- ggplot(gr_newdeaths) +
   geom_hline(yintercept = 0, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_red) +
   geom_point(colour = nice_red) +
-  scale_y_continuous(expand = c(0.1, 0), breaks = c(-0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.6, 0.8), labels = scales::percent_format(), limits = c(-0.011, NA)) +
+  scale_y_continuous(expand = c(0.1, 0), #breaks = c(-0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.6, 0.8), 
+                     labels = scales::percent_format(), limits = c(-0.65, 1)
+                     ) +
   labs(
     x = "End date of 7 day period",
     y = "Daily % growth",
@@ -438,17 +444,19 @@ gridExtra::grid.arrange(fig1, fig2, nrow = 2)
 \newpage 
 
 ```{r, fig.width=6, fig.height=5}
-ggplot(gr_newcases_hb) +
+p<-ggplot(gr_newcases_hb) +
   aes(
     x = date, y = growth - 1,
-    ymin = lci_growth - 1, ymax = uci_growth - 1,
+    #ymin = lci_growth - 1, ymax = uci_growth - 1,
     colour = health_board, fill = health_board
   ) +
-  geom_errorbar(width = 0, colour = "gray30", alpha = 0.4) +
+  #geom_errorbar(width = 0, colour = "gray30", alpha = 0.4) +
   geom_hline(yintercept = 0, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line() +
-  geom_point() +
-  scale_y_continuous(expand = c(0.1, 0), breaks = c(-0.10, 0, 0.2, 0.4, 0.6, 0.8), labels = scales::percent_format(), limits = c(-0.11, NA)) +
+  geom_point(aes(shape = symbol)) +
+  scale_y_continuous(expand = c(0.1, 0), #breaks = c(-0.10, 0, 0.2, 0.4, 0.6, 0.8),
+  labels = scales::percent_format(),# limits = c(-0.11, NA)
+  ) +
   scale_color_manual(values = c('#e6194b', '#ffe119', '#4363d8','#800000', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#008080', '#9a6324',  '#808000', '#ffd8b1', '#000075', '#808080'))+
   scale_fill_manual(values = c('#e6194b', '#ffe119', '#4363d8','#800000', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#008080', '#9a6324',  '#808000', '#ffd8b1', '#000075', '#808080'))+
   labs(
@@ -456,11 +464,16 @@ ggplot(gr_newcases_hb) +
     y = "Daily % growth",
     subtitle = "New cases"
   ) +
-  guides(color = guide_legend(nrow = 4)) +
+  guides(colour = guide_legend(override.aes = list(shape = NA), nrow = 6),
+         shape = guide_legend(nrow = 6)
+         ) +
   theme_bw(base_size = 12) +
     theme(legend.position="top",
         legend.box="horizontal", legend.margin=margin(),
-        legend.title = element_blank())
+        legend.title = element_blank(),
+        legend.text=element_text(size=8)) 
+
+p
 
 
 ```
