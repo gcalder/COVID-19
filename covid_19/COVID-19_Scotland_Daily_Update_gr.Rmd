@@ -109,10 +109,18 @@ nice_red <- palette_OkabeIto[6]
 # Growth rates
 gr_newcases <- growth_rates(dat = scot_data %>% rename("outcome" = new_cases)) %>%
                filter(date >= ymd("2020-03-23")) %>%
-               significance()
+               significance() %>%
+  mutate(sign_ci = case_when(significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero",
+                            significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero",
+                            significance == "significantly greater than 0" ~ "and the 95% confidence interval does not include zero",
+                            significance == "significantly less than 0" ~ "and the 95% confidence interval does not include zero"))
 gr_newdeaths <- growth_rates(dat = scot_deaths %>% rename("outcome" = new_deaths)) %>%
                filter(date >= ymd("2020-03-23")) %>%
-               significance()
+               significance() %>%
+  mutate(sign_ci = case_when(significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero",
+                            significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero",
+                            significance == "significantly greater than 0" ~ "and the 95% confidence interval does not include zero",
+                            significance == "significantly less than 0" ~ "and the 95% confidence interval does not include zero"))
 gr_newcases_hb <- scot_data_health_board %>% rename("outcome" = new_cases) %>%
    group_by(health_board) %>%
    nest() %>%
@@ -123,7 +131,11 @@ gr_newcases_hb <- scot_data_health_board %>% rename("outcome" = new_cases) %>%
   mutate(symbol = case_when(significance == "not significantly different to 0" ~ "not sig <>0",
                             significance == "not significantly different to 0" ~ "not sig <>0",
                             significance == "significantly greater than 0" ~ "sig >0",
-                            significance == "significantly less than 0" ~ "sig <0"))
+                            significance == "significantly less than 0" ~ "sig <0")) %>%
+  mutate(sign_ci = case_when(significance == "not significantly different to 0" ~ "The 95% confidence interval includes zero",
+                            significance == "not significantly different to 0" ~ "The 95% confidence interval includes zero",
+                            significance == "significantly greater than 0" ~ "The 95% confidence interval does not include zero",
+                            significance == "significantly less than 0" ~ "The 95% confidence interval does not include zero"))
 ```
 
 <br>
@@ -136,12 +148,12 @@ Here is the daily report for COVID-19 in Scotland for `r weekdays(max(scot_data$
 **Deaths:** <br/>
 The death toll is currently `r max(scot_deaths$deaths, na.rm = TRUE)`.   
 The number of new deaths reported today was `r scot_deaths$new_deaths[nrow(scot_deaths)]`, which represents a `r formatC(round(100*(scot_deaths$deaths[nrow(scot_deaths)]-scot_deaths$deaths[nrow(scot_deaths)-1])/scot_deaths$deaths[nrow(scot_deaths)-1],1), format='f', digits=1 )`% increase on yesterday's total. <br/> 
-The average daily growth rate for new deaths measured over the last 7 days was `r paste0(gr_newdeaths$sign[nrow(gr_newdeaths)], formatC(round(100*(gr_newdeaths$growth[nrow(gr_newdeaths)]-1),1), format='f', digits=1 ))`%, which is `r gr_newdeaths$significance[nrow(gr_newdeaths)]`.    
+The average daily growth rate for new deaths measured over the last 7 days was `r paste0(gr_newdeaths$sign[nrow(gr_newdeaths)], formatC(round(100*(gr_newdeaths$growth[nrow(gr_newdeaths)]-1),1), format='f', digits=1 ))`%, `r gr_newdeaths$sign_ci[nrow(gr_newdeaths)]`.    
 
 **Cases:** <br/>
 The total number of cases is currently `r comma(scot_data$confirmed_cases[nrow(scot_data)])`.    
 The number of new cases today is `r scot_data$new_cases[nrow(scot_data)]`, which represents a `r formatC(round(100*(scot_data$confirmed_cases[nrow(scot_data)]-scot_data$confirmed_cases[nrow(scot_data)-1])/scot_data$confirmed_cases[nrow(scot_data)-1],1), format='f', digits=1 )`% increase on yesterday's total. <br/> 
-The average daily growth rate for new cases measured over the last 7 days was `r paste0(gr_newcases$sign[nrow(gr_newcases)], formatC(round(100*(gr_newcases$growth[nrow(gr_newcases)]-1),1), format='f', digits=1 ))`%, which is `r gr_newcases$significance[nrow(gr_newcases)]`.  
+The average daily growth rate for new cases measured over the last 7 days was `r paste0(gr_newcases$sign[nrow(gr_newcases)], formatC(round(100*(gr_newcases$growth[nrow(gr_newcases)]-1),1), format='f', digits=1 ))`%, `r gr_newcases$sign_ci[nrow(gr_newcases)]`.  
 
 ```{r}
 data_incidence <- scot_data_health_board %>%
@@ -167,7 +179,7 @@ The highest cumulative incidence is `r formatC(round(max(scot_ci_hb$cumulative_i
 **Health Boards\*:** <br/>
 The largest increase in cases in absolute terms by health board was `r max(data_incidence_today$new_cases)` cases, which occurred in `r subset(data_incidence_today, new_cases == max(data_incidence_today$new_cases))$health_board`.<br/> 
 The largest relative increase in cases was `r formatC(round(max(data_incidence_today$relative_increase_cases),1),format='f', digits=1)`%, which occurred in `r subset(data_incidence_today, relative_increase_cases == max(data_incidence_today$relative_increase_cases))$health_board`. <br/> 
-The fastest average daily growth rate for new cases over the past 7 days was `r paste0(data_growth_rates_today$sign, formatC(round(100*(data_growth_rates_today$growth-1),1), format='f', digits=1))`%, which is `r data_growth_rates_today$significance` and occurred in `r data_growth_rates_today$health_board`.
+The fastest average daily growth rate for new cases over the past 7 days was `r paste0(data_growth_rates_today$sign, formatC(round(100*(data_growth_rates_today$growth-1),1), format='f', digits=1))`%, which occurred in `r data_growth_rates_today$health_board`. `r data_growth_rates_today$sign_ci`.
 
 **Tests:** <br/>
 The total number of tests reported is `r comma(scot_tests$Conducted[nrow(scot_tests)])`. <br/>
