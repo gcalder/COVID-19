@@ -26,7 +26,12 @@
 #   nest() %>%
 #   mutate(gr = map(data, ~growth_rates(dat = .x))) %>%
 #   unnest(gr) -> fit
-  
+#dat <- subset(scot_data_health_board, health_board == unique(scot_data_health_board$health_board)[1])
+#dat <- subset(dat, date >= (ymd("2020-04-17")-days(6)) & date <= ymd("2020-04-17"))
+#dat$day <- 1:7
+#mod <- glm(log(new_cases) ~ as.numeric(date), data = subset(dat, new_cases >0) )
+#mod <- glm(log(new_cases) ~ as.numeric(day), data = subset(dat, new_cases >0) )
+#coef(mod) %>% exp()
 
 growth_rates <-function(dat){
 
@@ -59,10 +64,6 @@ fit <- fit %>%
   mutate(mod = map(data, ~ lm(log(outcome) ~ date_num,
                               data = .x
   ))) %>%
-  # cum cases
-  #mutate(mod = map(data, ~ lm(log(confirmed_cases) ~ date_num,
-  #                            data = .x
-  #))) %>%
   mutate(coef = map(mod, coef)) %>%
   mutate(log_growth = map_dbl(coef, "date_num")) %>% 
   mutate(lci_log_growth = map_dbl(mod, ~ confint(.x)["date_num", "2.5 %"])) %>%
