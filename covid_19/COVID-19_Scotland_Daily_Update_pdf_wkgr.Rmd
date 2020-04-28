@@ -308,7 +308,6 @@ p
 
 \newpage 
 
-\subsubsection*{Maps}
 
 ```{r, fig.width=9, fig.align="center"}
 minimal_theme <- theme_minimal() +
@@ -324,16 +323,18 @@ map1 <- ggplot(data = cases_by_area) +
     geom_sf(aes(fill = confirmed_cases)) +
     scale_fill_viridis_c(option = "inferno", trans = "sqrt", direction = -1) +
   #scale_fill_gradient(low = "yellow", high = "red", na.value = NA, trans = "sqrt") +
-  minimal_theme + labs(fill = "Total cases")
+  minimal_theme + labs(fill = "Total cases") + labs(title = "Total COVID-19 Cases in Scotland")
 
 map1
 ```
+
+\hfill \break
 
 ```{r, fig.width=9, fig.align="center"}
 map2 <- ggplot(data = cases_by_area) +
     geom_sf(aes(fill = cumulative_incidence)) +
     scale_fill_viridis_c(option = "inferno", direction = -1) +
-  minimal_theme + labs(fill = "Cases per \n10,000 people")
+  minimal_theme + labs(fill = "Cases per \n10,000 people") + labs(title = "Per Capita COVID-19 Cases in Scotland")
 
 map2
 
