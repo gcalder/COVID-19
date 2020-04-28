@@ -42,6 +42,6 @@ significance_wk <- function(df){
     significant <- c(significant, sig)
   }
   df$significance <- paste(if_else(significant, "significantly", "not significantly"), df$comparison, 1, sep = " ")
-  df$significance[df$significance %in% c("not significantly less than 1", "not significantly greater than 1") ] <- "not significantly different to 1"
+  df$significance[df$significance %in% c("not significantly greater than 1") ] <- "not significantly different to 1"
   return(df)
 }
