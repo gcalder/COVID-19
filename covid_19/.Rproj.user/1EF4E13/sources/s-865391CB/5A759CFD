@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1588090842289.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2528401503",
+    "id" : "5A759CFD",
+    "lastKnownWriteTime" : 1588090871,
+    "last_content_update" : 1588090871753,
+    "path" : "~/Documents/GitHub/COVID-19/covid_19/weekly_ratios.R",
+    "project_path" : "weekly_ratios.R",
+    "properties" : {
+        "cursorPosition" : "44,41",
+        "scrollLine" : "18",
+        "tempName" : "Untitled2"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
