@@ -1,0 +1,135 @@
+#Covid daily report
+## Weekly ratios
+
+#date: "`r format(Sys.time(), '%d %B, %Y')`" 
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# Load packages
+library(flexdashboard) ; library(shiny) ; library(readr); library(dplyr); library(tidyr); library(purrr); library(forcats); library(stringr); library(htmlwidgets); library(lubridate); library(sf); library(RcppRoll); library(plotly); library(shinythemes);library(leaflet); library(classInt); library(ggrepel); library(scales); library(leaflet.extras); library(RColorBrewer);
+library(colorblindr); library(readxl);library(spatstat.utils);library(httr);library(cowplot)
+
+source("growth_rate_window.R")
+source("weekly_ratios.R")
+# Import Scottish covid data
+#path <- "COVID-19_Scotland_data_all_2020-04-10.xlsx" 
+path <- paste0("COVID-19_Scotland_data_all_", {Sys.Date()}, ".xlsx") 
+# Scottish cases data
+scot_data_raw <- read_excel(path, sheet = "Cases By Health Board", skip = 1)
+scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrease")) %>%
+  rename(confirmed_cases= Total,
+         Date = Health_Board) %>%
+  mutate(date = lubridate::ymd(Date)) %>%
+  select(-Date)
+
+scot_data_raw$date[nrow(scot_data_raw)] <- scot_data_raw$date[nrow(scot_data_raw)-1] + days(1)
+#scot_data_raw$confirmed_cases[nrow(scot_data_raw)] <- 4565 ## REMOVE
+
+scot_data <- scot_data_raw %>%
+  mutate(new_cases = confirmed_cases - replace_na(lag(confirmed_cases),0)) %>%
+  mutate(doubling_time_week = 7*log(2)/log(confirmed_cases/replace_na(lag(confirmed_cases,7),0))) 
+
+# Per health board
+scot_data_health_board <- scot_data %>% 
+  select(date, Ayrshire:`Dumfries and Galloway`) %>%
+  pivot_longer(Ayrshire:`Dumfries and Galloway`,
+               names_to = "health_board",
+               values_to = "confirmed_cases") %>% 
+  group_by(health_board) %>%
+  mutate(new_cases = confirmed_cases - replace_na(lag(confirmed_cases), 0)) %>%
+  ungroup() %>%
+  replace_na(list(new_cases = 0))
+
+# Per health board for map
+# Cumulative incidence
+scot_ci_hb <- read_excel(path, sheet = "Cumulative Incidence Grouped") %>%
+  slice(nrow(.)) %>%
+  select(Ayrshire:Tayside) %>%
+  pivot_longer(Ayrshire:Tayside, names_to = "health_board", values_to = "cumulative_incidence")
+
+# Incidence over last day
+scot_ti_hb <- read_excel(path, sheet = "Incidence by Health Board") %>%
+  slice(nrow(.)) %>%
+  select(Ayrshire:Tayside) %>%
+  pivot_longer(Ayrshire:Tayside, names_to = "health_board", values_to = "today_incidence")
+
+scot_data_health_board_total <- scot_data_health_board %>% 
+  group_by(health_board) %>%
+  summarise(confirmed_cases = max(confirmed_cases, na.rm = T)) %>%
+  left_join(scot_ci_hb)
+
+# Scottish death data
+scot_deaths <- read_excel(path, sheet = "Scotland Deaths", skip = 1) %>%
+  rename("deaths" = Deaths_Cum, 
+         "new_deaths" = Deaths_New) %>%
+  mutate(doubling_time_week = 7*log(2)/log(deaths/replace_na(lag(deaths,7),0))) %>%
+  mutate(date = lubridate::ymd(Date)) 
+
+scot_deaths$date[nrow(scot_deaths)] <- scot_deaths$date[nrow(scot_deaths)-1] + days(1)
+
+# Scottish tests
+scot_tests <- read_excel(path, sheet = "CPT & DPC") 
+#scot_tests$Cases[nrow(scot_tests)] <- 4565 #REMOVE
+
+scot_tests  <- scot_tests %>%
+  rename("Conducted" = Tests, 
+         "Total Positive" = Cases,
+         "deaths_per_case" = DPC,
+         "cases_per_test" = CPT) %>%
+  mutate("Conducted today" = Conducted - replace_na(lag(Conducted), 0)) %>%
+  mutate("Total Negative" = Conducted - `Total Positive`) %>%
+  mutate("Positive" = `Total Positive` - replace_na(lag(`Total Positive`), 0),
+         "Negative" = `Total Negative` - replace_na(lag(`Total Negative`), 0)) 
+scot_tests$Positive[scot_tests$Date == ymd("2020-03-12")] <- 24
+scot_tests$Negative[scot_tests$Date == ymd("2020-03-12")] <- 552
+
+
+scot_tests_long <- scot_tests %>%
+  pivot_longer(cols = Positive:Negative, names_to = "Result", values_to = "Number") %>%
+  mutate(Result = factor(Result, levels = c("Positive", "Negative")))
+
+
+# Map files
+# SCOTLAND MAP
+cases_by_area <- sf::st_read("SG_NHS_HealthBoards_2019b.geojson") %>%
+  mutate(health_board = case_when(HBName == "Ayrshire and Arran" ~ "Ayrshire",
+                                  HBName %in% c("Grampian", "Shetland", "Orkney") ~ "Grampian, Shetland and Orkney",
+                                  HBName %in% c("Highland", "Western Isles") ~ "Highland and Western Isles",
+                                  TRUE ~ as.character(HBName))) %>%
+  st_transform(crs = st_crs("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")) %>%
+  left_join(scot_data_health_board_total, by = c("health_board" = "health_board")) 
+
+# Plot colours
+nice_blue <- palette_OkabeIto[5]
+nice_red <- palette_OkabeIto[6]  
+
+
+# Weekly Growth 
+wk_gr_newcases <- scot_data %>% select(new_cases, date) %>%
+  mutate(outcome = new_cases) %>%
+  weekly_ratios() %>%
+  filter(!is.na(ratio) & !is.infinite(ratio)) %>%
+  significance_wk() 
+
+wk_gr_newdeaths <- scot_deaths %>% select(new_deaths, date) %>%
+  mutate(outcome = new_deaths) %>%
+  weekly_ratios() %>%
+  filter(!is.na(ratio) & !is.infinite(ratio)) %>%
+  significance_wk()
+
+wk_gr_newcases_hb <- scot_data_health_board %>% rename("outcome" = new_cases) %>%
+  group_by(health_board) %>%
+  nest() %>%
+  mutate(gr = map(data, ~weekly_ratios(.x))) %>%
+  unnest(gr) %>%
+  filter(date >= ymd("2020-03-23")) %>%
+  filter(!is.na(ratio) & !is.infinite(ratio)) %>%
+  significance_wk() %>%
+  mutate(symbol = case_when(significance == "not significantly greater than 1" ~ "not sig <>1",
+                            significance == "not significantly less than 1" ~ "not sig <>1",
+                            significance == "significantly greater than 1" ~ "sig <> 1",
+                            significance == "significantly less than 1" ~ "sig <> 1")) %>%
+  mutate(sign_ci = case_when(significance == "not significantly greater than 1" ~ "This is not significantly greater than 1",
+                             significance == "not significantly less than 1" ~ "This is not significantly less than 1",
+                             significance == "significantly greater than 1" ~ "This is significantly greater than 1",
+                             significance == "significantly less than 1" ~ "This is significantly less than 1"))
+
+
