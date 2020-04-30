@@ -27,6 +27,11 @@ The total number of cases is currently `r comma(scot_data$confirmed_cases[nrow(s
 The number of new cases today is `r scot_data$new_cases[nrow(scot_data)]`, which represents a `r formatC(round(100*(scot_data$confirmed_cases[nrow(scot_data)]-scot_data$confirmed_cases[nrow(scot_data)-1])/scot_data$confirmed_cases[nrow(scot_data)-1],1), format='f', digits=1 )`% increase on yesterday's total.    
 The weekly ratio for new cases measured over the last 7 days was `r formatC(round(wk_gr_newcases$ratio_m[nrow(wk_gr_newcases)],1), format='f', digits=1 )`. This is `r wk_gr_newcases$significance[nrow(wk_gr_newcases)]`. 
 
+**Hospital and ICU Occupancy**     
+The number of patients in hospital with confirmed or suspected COVID-19 as of midnight is `r comma(filter(data_hosp, date == max(data_hosp$date))$Hospital_total)`, of whom `r filter(data_hosp, date == max(data_hosp$date))$ICU_total` are in ICU.    
+The day-of-the-week ratio for hospital occupancy `r formatC(round(wk_gr_hosp_hosp_latest$ratio_m,1), format='f', digits=1 )`. This is `r wk_gr_hosp_hosp_latest$significance`.     
+The day-of-the-week ratio for ICU occupancy is `r formatC(round(wk_gr_hosp_icu_latest$ratio_m,1), format='f', digits=1 )`. This is `r wk_gr_hosp_icu_latest$significance`.
+
 ```{r}
 data_incidence <- scot_data_health_board %>%
   group_by(health_board) %>%
