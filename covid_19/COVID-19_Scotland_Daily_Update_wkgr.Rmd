@@ -22,7 +22,7 @@ Here is the daily report for COVID-19 in Scotland for `r weekdays(max(scot_data$
 
 
 **Deaths:** <br/>
-The death toll is currently `r max(scot_deaths$deaths, na.rm = TRUE)`.   
+The death toll is currently `r comma(max(scot_deaths$deaths, na.rm = TRUE))`.   
 The number of new deaths reported today was `r scot_deaths$new_deaths[nrow(scot_deaths)]`, which represents a `r formatC(round(100*(scot_deaths$deaths[nrow(scot_deaths)]-scot_deaths$deaths[nrow(scot_deaths)-1])/scot_deaths$deaths[nrow(scot_deaths)-1],1), format='f', digits=1 )`% increase on yesterday's total. <br/> 
 The weekly ratio for new deaths measured over the last 7 days was `r formatC(round(wk_gr_newdeaths$ratio_m[nrow(wk_gr_newdeaths)],1), format='f', digits=1 )`. This is `r wk_gr_newdeaths$significance[nrow(wk_gr_newdeaths)]`.    
 
@@ -30,6 +30,11 @@ The weekly ratio for new deaths measured over the last 7 days was `r formatC(rou
 The total number of cases is currently `r comma(scot_data$confirmed_cases[nrow(scot_data)])`.    
 The number of new cases today is `r scot_data$new_cases[nrow(scot_data)]`, which represents a `r formatC(round(100*(scot_data$confirmed_cases[nrow(scot_data)]-scot_data$confirmed_cases[nrow(scot_data)-1])/scot_data$confirmed_cases[nrow(scot_data)-1],1), format='f', digits=1 )`% increase on yesterday's total. <br/> 
 The weekly ratio for new cases measured over the last 7 days was `r formatC(round(wk_gr_newcases$ratio_m[nrow(wk_gr_newcases)],1), format='f', digits=1 )`. This is `r wk_gr_newcases$significance[nrow(wk_gr_newcases)]`.  
+
+**Hospital and ICU Occupancy** <br/>
+The number of patients in hospital with confirmed or suspected COVID-19 as of midnight is `r comma(filter(data_hosp, date == max(data_hosp$date))$Hospital_total)`, of whom `r filter(data_hosp, date == max(data_hosp$date))$ICU_total` are in ICU.<br/>
+The day-of-the-week ratio for hospital occupancy `r formatC(round(wk_gr_hosp_hosp_latest$ratio_m,1), format='f', digits=1 )`. This is `r wk_gr_hosp_hosp_latest$significance`. <br/>
+The day-of-the-week ratio for ICU occupancy is `r formatC(round(wk_gr_hosp_icu_latest$ratio_m,1), format='f', digits=1 )`. This is `r wk_gr_hosp_icu_latest$significance`.
 
 ```{r}
 data_incidence <- scot_data_health_board %>%
@@ -410,9 +415,9 @@ plot_ly(data = data_incidence, x = ~date, y = ~doubling_time_week, color = ~heal
 
 <br> 
 
-### Weekly ratios
+### Rates of Change
 
-```{r casesdeathsratios, fig.width=7, fig.height= 7}
+```{r casesdeathsratios, fig.width=7, fig.height= 7, eval=FALSE}
 fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020"))) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
@@ -487,6 +492,162 @@ fig2 <- ggdraw() +
 
 gridExtra::grid.arrange(fig1, fig2, nrow = 2) 
 ```
+
+```{r deathscaseshospicu, fig.width=5.5, fig.height= 9, fig.cap="Weekly ratios for new cases and new deaths are ratios of weekly sums, plotted on a log10 scale. Day-of-the-week ratios for hospital occupancy and ICU occupancy are ratios of daily counts, measured 7 days apart and plotted on a log10 scale. Figure insets highlight more recent ratios and trends."}
+fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020"))) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_blue) +
+  geom_point(colour = nice_blue, size = 1) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  scale_y_continuous(trans = "log10",
+                         labels = scales::comma_format(accuracy = 1),
+                         #breaks = breaks,
+                         expand = expansion(mult = 0.1)) +
+  labs( x = "End Date of Current Week",
+        y = "Weekly Ratio",
+        #title = "Change in weekly cases/deaths total as ratio of previous week",
+        subtitle = "New Cases (Source: HPS)") +
+  theme_bw(base_size = 12) +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 14, b = 0, l = 0)))
+
+fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & 
+                    !is.infinite(ratio) & date >= max(wk_gr_newcases$date)-8)) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_blue) +
+  geom_point(colour = nice_blue, size = 1) +
+  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  scale_y_continuous(trans = "log10") +
+  labs( x = "", y = "") +
+  theme_bw(base_size = 10) +
+  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
+
+fig1 <- ggdraw() +
+  draw_plot(fig1) +
+  draw_plot(fig1_inset, x = 0.57, y = .52, width = .40, height = .3)
+
+fig2 <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
+              !is.infinite(ratio) & date >= dmy("23-03-2020"))) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_red, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_red) +
+  geom_point(colour = nice_red, size = 1) +
+  scale_y_continuous(trans = "log10",
+                         #breaks = breaks,
+                         expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  labs( x = "End Date of Current Week",
+        y = "Weekly Ratio",
+        subtitle = "New Deaths (Source: HPS)") +
+  theme_bw(base_size = 12)
+
+fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
+                    !is.infinite(ratio) & date >= max(wk_gr_newdeaths$date)-8)) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_red, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_red) +
+  geom_point(colour = nice_red, size = 1) +
+  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"),expand = expansion(mult = 0.1)) +
+  scale_y_continuous(trans = "log10") +
+  labs( x = "",
+        y = "") +
+  theme_bw(base_size = 10) +
+  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
+
+fig2 <- ggdraw() +
+  draw_plot(fig2) +
+  draw_plot(fig2_inset, x = 0.57, y = .52, width = .40, height = .3)
+
+
+fig3 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
+              !is.infinite(ratio_m) & date >= dmy("23-03-2020"))) +
+  aes(x = date, y = ratio_m,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_orange) +
+  geom_point(colour = nice_orange, size = 1) +
+  scale_y_continuous(trans = "log10",
+                         #breaks = breaks,
+                         expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  labs( x = "Current Date",
+        y = "Day-Of-The-Week Ratio",
+        subtitle = "ICU Occupancy (Source: NHS Boards)") +
+  theme_bw(base_size = 12) +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)))
+
+
+
+fig3_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
+                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_icu$date)-8)) +
+  aes(x = date, y = ratio_m,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_orange) +
+  geom_point(colour = nice_orange, size = 1) +
+  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  scale_y_continuous(trans = "log10") +
+  labs( x = "",
+        y = "") +
+  theme_bw(base_size = 10) +
+  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
+
+fig3 <- ggdraw() +
+  draw_plot(fig3) +
+  draw_plot(fig3_inset, x = 0.57, y = .52, width = .40, height = .3)
+
+fig4 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
+              !is.infinite(ratio_m) & date >= dmy("23-03-2020"))) +
+  aes(x = date, y = ratio_m,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_green) +
+  geom_point(colour = nice_green, size = 1) +
+  scale_y_continuous(trans = "log10",
+                         #breaks = breaks,
+                         expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  labs( x = "Current Date",
+        y = "Day-Of-The-Week Ratio",
+        subtitle = "Hospital Occupancy (Source: NHS Boards)") +
+  theme_bw(base_size = 12) +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 14, b = 0, l = 0)))
+
+
+fig4_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
+                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_hosp$date)-8)) +
+  aes(x = date, y = ratio_m,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_green) +
+  geom_point(colour = nice_green, size = 1) +
+  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  scale_y_continuous(trans = "log10") +
+  labs( x = "",
+        y = "") +
+  theme_bw(base_size = 10) +
+  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
+
+fig4 <- ggdraw() +
+  draw_plot(fig4) +
+  draw_plot(fig4_inset, x = 0.57, y = 0.52, width = 0.40, height = 0.3)
+
+gridExtra::grid.arrange(fig1, fig2, fig4, fig3, nrow = 4) 
+```
+
 
 <br>
 
