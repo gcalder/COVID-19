@@ -33,15 +33,17 @@
 #mod <- glm(log(new_cases) ~ as.numeric(day), data = subset(dat, new_cases >0) )
 #coef(mod) %>% exp()
 
-growth_rates <-function(dat){
-
+growth_rates <-function(dat, days_n = 6){
+#dat <-scot_deaths
+#days_n <-13
+#dat$outcome <- dat$new_deaths
 # add windows
 dat <- dat %>%
   crossing(tibble(
     start = seq(from = min(dat$date),
-                to = max(dat$date) - days(6),
+                to = max(dat$date) - days(days_n),
                 by = 1),
-    end   = seq(from = min(dat$date) + days(6),
+    end   = seq(from = min(dat$date) + days(days_n),
               to = max(dat$date),
               by = 1)))
 
