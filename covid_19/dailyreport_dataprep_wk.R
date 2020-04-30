@@ -7,7 +7,6 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 library(flexdashboard) ; library(shiny) ; library(readr); library(dplyr); library(tidyr); library(purrr); library(forcats); library(stringr); library(htmlwidgets); library(lubridate); library(sf); library(RcppRoll); library(plotly); library(shinythemes);library(leaflet); library(classInt); library(ggrepel); library(scales); library(leaflet.extras); library(RColorBrewer);
 library(colorblindr); library(readxl);library(spatstat.utils);library(httr);library(cowplot)
 
-source("growth_rate_window.R")
 source("weekly_ratios.R")
 # Import Scottish covid data
 #path <- "COVID-19_Scotland_data_all_2020-04-10.xlsx" 
@@ -98,11 +97,15 @@ cases_by_area <- sf::st_read("SG_NHS_HealthBoards_2019b.geojson") %>%
   left_join(scot_data_health_board_total, by = c("health_board" = "health_board")) 
 
 # Plot colours
-nice_blue <- palette_OkabeIto[5]
-nice_red <- palette_OkabeIto[6]  
+#nice_blue <- palette_OkabeIto[5]
+#nice_red <- palette_OkabeIto[6]  
+nice_blue <- "#0072B2"
+nice_red <- "#D55E00"
+nice_green <- "#009E73"
+nice_orange <- "#E69F00"
 
 
-# Weekly Growth 
+# Weekly ratios 
 wk_gr_newcases <- scot_data %>% select(new_cases, date) %>%
   mutate(outcome = new_cases) %>%
   weekly_ratios() %>%
@@ -132,4 +135,68 @@ wk_gr_newcases_hb <- scot_data_health_board %>% rename("outcome" = new_cases) %>
                              significance == "significantly greater than 1" ~ "This is significantly greater than 1",
                              significance == "significantly less than 1" ~ "This is significantly less than 1"))
 
+
+# Import hospital data
+## Covid daily hospital data
+myurl <- "https://www.gov.scot/binaries/content/documents/govscot/publications/statistics/2020/04/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/documents/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/govscot%3Adocument/Data%2BTable%2B%252810-04-2020%2529.xlsx?forceDownload=true"
+GET(myurl, write_disk(tmp <- tempfile(fileext = ".xlsx")))
+
+#data_hosp <- read_excel(tmp, sheet = "Table 1", skip = 3)
+data_hosp <- read_excel(tmp, sheet = "Table 2 - Hospital Care", skip = 3)
+
+data_hosp <- data_hosp %>%
+  rename("date" = "...1",
+         "ICU_confirmed" = "Confirmed...2",
+         "ICU_suspected" ="Suspected...3", 
+         "ICU_total" = "Total...4",
+         "Hospital_confirmed" = "Confirmed...5",
+         "Hospital_suspected" = "Suspected...6",
+         "Hospital_total" = "Total...7" ) %>%
+  filter(!is.na(ICU_total)) %>%
+  #mutate(date = as.Date(as.numeric(date), origin = "1899-12-30")) %>%
+  mutate(date = lubridate::ymd(date)) %>%
+  mutate(ICU_confsusp = case_when(is.na(ICU_confirmed) & is.na(ICU_suspected) ~ ICU_total)) %>%
+  mutate(Hospital_confsusp = case_when(is.na(Hospital_confirmed) & is.na(Hospital_suspected) ~ Hospital_total)) %>%
+  select(date, contains("ICU"), everything()) %>%
+  select(date, ICU_total, Hospital_total) 
+
+wk_gr_hosp_icu <- data_hosp %>%
+  mutate(ICU_prev = lag(ICU_total , 7), 
+         weekdays(date)) %>%
+  filter(date >= ymd("2020-03-25")) %>%
+  pivot_longer(c(ICU_total, ICU_prev), names_to = "week", values_to = "number") %>%
+  group_by(date) %>%
+  nest() %>%
+  mutate(mod = map(data, ~ glm(number ~ week,
+                               data = .x, family = poisson))) %>%
+  mutate(ratio_m = map_dbl(mod, ~ exp(coef(.x)["weekICU_total"]))) %>% 
+  mutate(lci = map_dbl(mod, ~ exp(confint(.x)["weekICU_total", "2.5 %"]))) %>%
+  mutate(uci = map_dbl(mod, ~ exp(confint(.x)["weekICU_total", "97.5 %"]))) %>%
+  ungroup() %>%
+  select(date, ratio_m, lci, uci) %>%
+  mutate(comparison = if_else(ratio_m >1, "greater than", "less than")) %>%
+  significance_wk() 
+
+
+wk_gr_hosp_icu_latest <- filter(wk_gr_hosp_icu, date == max(wk_gr_hosp_icu$date))
+
+wk_gr_hosp_hosp <- data_hosp %>%
+  mutate(Hosp_prev = lag(Hospital_total , 7), 
+         weekdays(date)) %>%
+  filter(date >= ymd("2020-03-25")) %>%
+  pivot_longer(c(Hospital_total, Hosp_prev), names_to = "week", values_to = "number") %>%
+  group_by(date) %>%
+  nest() %>%
+  mutate(mod = map(data, ~ glm(number ~ week,
+                               data = .x, family = poisson))) %>%
+  mutate(ratio_m = map_dbl(mod, ~ exp(coef(.x)["weekHospital_total"]))) %>% 
+  mutate(lci = map_dbl(mod, ~ exp(confint(.x)["weekHospital_total", "2.5 %"]))) %>%
+  mutate(uci = map_dbl(mod, ~ exp(confint(.x)["weekHospital_total", "97.5 %"]))) %>%
+  ungroup() %>%
+  select(date, ratio_m, lci, uci) %>%
+  mutate(comparison = if_else(ratio_m >1, "greater than", "less than")) %>%
+  significance_wk() 
+
+
+wk_gr_hosp_hosp_latest <- filter(wk_gr_hosp_hosp, date == max(wk_gr_hosp_icu$date))
 
