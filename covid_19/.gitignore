@@ -5,3 +5,5 @@
 *.xml
 *.Rhistory
 *.DS_Store
+*.html
+*.json
