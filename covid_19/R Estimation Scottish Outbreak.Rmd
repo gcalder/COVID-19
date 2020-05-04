@@ -1,0 +1,149 @@
+---
+title: "R Estimation - Scottish Outbreak"
+author: "SM"
+date: "03/05/2020"
+output: pdf_document
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(EpiEstim)
+library(ggplot2)
+library(incidence)
+library(cowplot)
+library(viridis)
+library(knitr)
+
+cases <- read_csv("scot_data.csv") %>%
+  select(date, new_cases, confirmed_cases)
+
+```
+
+R estimation over the preceding 7 days using R package [EpiEstim](https://cran.r-project.org/web/packages/EpiEstim/vignettes/demo.html), based on daily cases reported.
+
+Serial interval sources:
+
+A) Mean 6.48 days and SD 3.83 as estimated in China (paper in Chinese). This is the estimate used by the Imperial College COVID-19 response team [here](https://mrc-ide.github.io/covid19-short-term-forecasts/index.html#methods) and by others [here](https://d212y8ha88k086.cloudfront.net/manuscripts/17379/dc06fb5c-fcf5-414d-bda8-8d4d61cea9b4_15843_-_kylie_ainslie.pdf?doi=10.12688/wellcomeopenres.15843.1&numberOfBrowsableCollections=5&numberOfBrowsableInstitutionalCollections=0&numberOfBrowsableGateways=13).  
+B) Mean 3.96 days and SD 4.75 as estimated [here](https://wwwnc.cdc.gov/eid/article/26/6/20-0357_article).
+C) Mean 4.7 days and SD 2.9 days as estimated [here](https://www.ncbi.nlm.nih.gov/pubmed/32145466).
+D) Mean 7.4 and SD 5.2 days as estimated [here](https://arxiv.org/pdf/2003.05003.pdf).
+
+
+```{r}
+df <- data.frame(date = seq(min(cases$date), max(cases$date), "days"))
+cases <- left_join(df, cases, by = "date") %>%
+  mutate(new_cases = case_when(is.na(new_cases) ~ 0,
+         TRUE ~ new_cases),
+         confirmed_cases = zoo::na.locf(confirmed_cases))
+
+
+## Estimate A Mean 6.48 and SD 3.83
+res_parametric_si <- estimate_R(cases$new_cases, 
+                                method="parametric_si",
+                                config = make_config(list(
+                                  mean_si = 6.48, 
+                                  std_si = 3.83)))
+
+df1<- res_parametric_si$R
+df1$si <- 6.48
+df1$date <- cases$date[8:nrow(cases)]
+
+## Estimate B 3.96 days and SD of 4.75 estimated
+res_parametric_si_3.96 <- estimate_R(cases$new_cases, 
+                                method="parametric_si",
+                                config = make_config(list(
+                                  mean_si = 3.96, 
+                                  std_si = 4.75)))
+
+df2<- res_parametric_si_3.96$R
+df2$si <- 3.96
+df2$date <- cases$date[8:nrow(cases)]
+
+## Estimate C Mean 4.7 days and SD 2.9 
+res_parametric_si_4.7 <- estimate_R(cases$new_cases, 
+                                     method="parametric_si",
+                                     config = make_config(list(
+                                       mean_si = 4.7, 
+                                       std_si = 2.9)))
+
+df3<- res_parametric_si_4.7$R
+df3$si <- 4.7
+df3$date <- cases$date[8:nrow(cases)]
+
+## Estimate D Mean 7.4 and SD 5.2
+res_parametric_si_7.4 <- estimate_R(cases$new_cases, 
+                                     method="parametric_si",
+                                     config = make_config(list(
+                                       mean_si = 7.4, 
+                                       std_si = 5.2)))
+
+df4<- res_parametric_si_7.4$R
+df4$si <- 7.4
+df4$date <- cases$date[8:nrow(cases)]
+
+df_all <- bind_rows(df1, df2, df3, df4)
+
+nice_blue <- "#0072B2"
+nice_red <- "#D55E00"
+nice_green <- "#009E73"
+nice_orange <- "#E69F00"
+
+
+fig1 <- ggplot(filter(df_all, date >dmy("14/03/2020")), aes(x = date, y = `Mean(R)`, ymin = `Quantile.0.025(R)`, ymax = `Quantile.0.975(R)`, 
+       fill = factor(si))) +
+  geom_ribbon(alpha = 0.3) +
+  geom_line(aes(colour = factor(si))) + 
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  scale_y_continuous(breaks = c(0.5, 0.75, 1.0,2, 3,4,5)) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  #scale_fill_manual(values = c(nice_blue, nice_red, nice_green, nice_orange)) + 
+  #scale_colour_manual(values = c(nice_blue, nice_red, nice_green, nice_orange)) +
+  scale_color_viridis(discrete = TRUE, option = "D")+
+  scale_fill_viridis(discrete = TRUE) +
+  labs(fill = "Serial \nInterval", colour = "Serial \nInterval", y = "R over the preceding 7 days", x = "Week Ending") +
+  theme_bw() 
+
+fig1_inset <- ggplot(filter(df_all, date > max(df_all$date)-8), aes(x = date, y = `Mean(R)`, ymin = `Quantile.0.025(R)`, ymax = `Quantile.0.975(R)`, 
+       fill = factor(si))) +
+  geom_ribbon(alpha = 0.2) +
+  geom_line(aes(colour = factor(si))) + 
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  scale_y_continuous(breaks = c(0.85, 0.9, 0.95, 1.0, 1.05, 1.1)) +
+  scale_x_date(date_breaks = "2 days", labels = date_format("%b %d")) +
+  #scale_fill_manual(values = c(nice_blue, nice_red, nice_green, nice_orange)) + 
+  #scale_colour_manual(values = c(nice_blue, nice_red, nice_green, nice_orange)) +
+  scale_color_viridis(discrete = TRUE, option = "D")+
+  scale_fill_viridis(discrete = TRUE) +
+  labs(fill = "Serial \nInterval", colour = "Serial \nInterval", y = "", x = "Week Ending") +
+  labs( x = "",
+        y = "",
+        colour = "",
+        fill = "") +
+  theme_bw(base_size = 10) +
+  theme(legend.position = "none") +
+  theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))
+
+ggdraw() +
+  draw_plot(fig1) +
+  draw_plot(fig1_inset, x = 0.4, y = .48, width = .40, height = .45)
+```
+
+\newpage 
+
+```{r}
+df_all %>%
+  filter(date > max(df_all$date)-3) %>%
+  select(date, si, `Mean(R)`, `Quantile.0.025(R)`, `Quantile.0.975(R)` ) %>%
+  rename(Mean = `Mean(R)`,
+         LCI = `Quantile.0.025(R)`,
+         UCI = `Quantile.0.975(R)`) %>%
+  arrange(desc(date)) %>%
+  kable(caption = "Recent R estimates using published serial intervals", digits = 2)
+```
+
+
