@@ -26,6 +26,7 @@ scot_data <- scot_data_raw %>%
   mutate(new_cases = confirmed_cases - replace_na(lag(confirmed_cases),0)) %>%
   mutate(doubling_time_week = 7*log(2)/log(confirmed_cases/replace_na(lag(confirmed_cases,7),0))) 
 
+write_csv(scot_data, "scot_data.csv")
 # Per health board
 scot_data_health_board <- scot_data %>% 
   select(date, Ayrshire:`Dumfries and Galloway`) %>%
