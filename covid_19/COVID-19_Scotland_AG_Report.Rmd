@@ -19,9 +19,9 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.pos = 
 library(flexdashboard) ; library(shiny) ; library(readr); library(dplyr); library(tidyr); library(purrr); library(forcats); library(stringr); library(htmlwidgets); library(lubridate); library(sf); library(RcppRoll); library(plotly); library(shinythemes);library(leaflet); library(classInt); library(ggrepel); library(scales); library(leaflet.extras); library(RColorBrewer);
 library(colorblindr); library(readxl);library(spatstat.utils);library(httr);library(cowplot)
 
-source("growth_rate_window.R")
+#source("growth_rate_window.R")
 source("weekly_ratios.R")
-source("weekly_ratios_byday.R")
+#source("weekly_ratios_byday.R")
 
 
 # Import hospital data
