@@ -21,9 +21,7 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.pos = 
 library(flexdashboard) ; library(shiny) ; library(readr); library(dplyr); library(tidyr); library(purrr); library(forcats); library(stringr); library(htmlwidgets); library(lubridate); library(sf); library(RcppRoll); library(plotly); library(shinythemes);library(leaflet); library(classInt); library(ggrepel); library(scales); library(leaflet.extras); library(RColorBrewer);
 library(colorblindr); library(readxl);library(spatstat.utils);library(httr);library(cowplot)
 
-source("growth_rate_window.R")
 source("weekly_ratios.R")
-source("weekly_ratios_byday.R")
 
 
 # Import hospital data
@@ -203,68 +201,6 @@ nice_red <- "#D55E00"
 nice_green <- "#009E73"
 nice_orange <- "#E69F00"
 
-# Growth rates new cases/deaths
-gr_newcases <- growth_rates(dat = scot_data %>% rename("outcome" = new_cases)) %>%
-               filter(date >= ymd("2020-03-23")) %>%
-               significance() %>%
-  mutate(sign_ci = case_when(significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero growth",
-                            significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero growth",
-                            significance == "significantly greater than 0" ~ "and the 95% confidence interval does not include zero growth",
-                            significance == "significantly less than 0" ~ "and the 95% confidence interval does not include zero growth"))
-gr_newdeaths <- growth_rates(dat = scot_deaths %>% rename("outcome" = new_deaths)) %>%
-               filter(date >= ymd("2020-03-23")) %>%
-               significance() %>%
-  mutate(sign_ci = case_when(significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero growth",
-                            significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero growth",
-                            significance == "significantly greater than 0" ~ "and the 95% confidence interval does not include zero growth",
-                            significance == "significantly less than 0" ~ "and the 95% confidence interval does not include zero growth"))
-gr_newcases_hb <- scot_data_health_board %>% rename("outcome" = new_cases) %>%
-   group_by(health_board) %>%
-   nest() %>%
-   mutate(gr = map(data, ~growth_rates(dat = .x))) %>%
-   unnest(gr) %>%
-   filter(date >= ymd("2020-03-23")) %>%
-               significance() %>%
-  mutate(symbol = case_when(significance == "not significantly different to 0" ~ "not sig <>0",
-                            significance == "not significantly different to 0" ~ "not sig <>0",
-                            significance == "significantly greater than 0" ~ "sig <> 0",
-                            significance == "significantly less than 0" ~ "sig <> 0")) %>%
-  mutate(sign_ci = case_when(significance == "not significantly different to 0" ~ "The 95% confidence interval includes zero growth",
-                            significance == "not significantly different to 0" ~ "The 95% confidence interval includes zero growth",
-                            significance == "significantly greater than 0" ~ "The 95% confidence interval does not include zero growth",
-                            significance == "significantly less than 0" ~ "The 95% confidence interval does not include zero growth"))
-
-# Growth rates cumulative cases/deaths
-gr_newcases_14 <- growth_rates(dat = scot_data %>% rename("outcome" = new_cases), days_n = 13) %>%
-               filter(date >= ymd("2020-03-23")) %>%
-               significance() %>%
-  mutate(sign_ci = case_when(significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero growth",
-                            significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero growth",
-                            significance == "significantly greater than 0" ~ "and the 95% confidence interval does not include zero growth",
-                            significance == "significantly less than 0" ~ "and the 95% confidence interval does not include zero growth"))
-gr_newdeaths_14 <- growth_rates(dat = scot_deaths %>% rename("outcome" = new_deaths), days_n = 13) %>%
-               filter(date >= ymd("2020-03-23")) %>%
-               significance() %>%
-  mutate(sign_ci = case_when(significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero growth",
-                            significance == "not significantly different to 0" ~ "but the 95% confidence interval includes zero growth",
-                            significance == "significantly greater than 0" ~ "and the 95% confidence interval does not include zero growth",
-                            significance == "significantly less than 0" ~ "and the 95% confidence interval does not include zero growth"))
-gr_newcases_hb_14 <- scot_data_health_board %>% rename("outcome" = new_cases) %>%
-   group_by(health_board) %>%
-   nest() %>%
-   mutate(gr = map(data, ~growth_rates(dat = .x, days_n = 13))) %>%
-   unnest(gr) %>%
-   filter(date >= ymd("2020-03-23")) %>%
-               significance() %>%
-  mutate(symbol = case_when(significance == "not significantly different to 0" ~ "not sig <>0",
-                            significance == "not significantly different to 0" ~ "not sig <>0",
-                            significance == "significantly greater than 0" ~ "sig <> 0",
-                            significance == "significantly less than 0" ~ "sig <> 0")) %>%
-  mutate(sign_ci = case_when(significance == "not significantly different to 0" ~ "The 95% confidence interval includes zero growth",
-                            significance == "not significantly different to 0" ~ "The 95% confidence interval includes zero growth",
-                            significance == "significantly greater than 0" ~ "The 95% confidence interval does not include zero growth",
-                            significance == "significantly less than 0" ~ "The 95% confidence interval does not include zero growth"))
-
 
 # Weekly Growth 
 wk_gr_newcases <- scot_data %>% select(new_cases, date) %>%
@@ -273,15 +209,6 @@ wk_gr_newcases <- scot_data %>% select(new_cases, date) %>%
        filter(!is.na(ratio) & !is.infinite(ratio)) %>%
        significance_wk() %>%
        mutate(adjustment = "no adjustment")
-
-wk_gr_newcases_byday <- scot_data %>% select(new_cases, date) %>%
-      mutate(outcome = new_cases) %>%
-      mutate(dayofweek = weekdays(date)) %>%
-      mutate(dayofweek = factor(dayofweek, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))) %>%
-       weekly_ratios_dayadj() %>%
-       filter(!is.na(ratio_m) & !is.infinite(ratio_m)) %>%
-       significance_wk() %>%
-        mutate(adjustment = "by weekdauy")
 
 wk_gr_newdeaths <- scot_deaths %>% select(new_deaths, date) %>%
       mutate(outcome = new_deaths) %>%
@@ -691,8 +618,179 @@ dev.off()
 png("weekly_ratios_portrait_4email.png", height = 11.69, width = 7, units = "in", res = 400)
 gridExtra::grid.arrange(fig1, fig2, fig4, fig3, nrow = 4, bottom = "Weekly ratios for new cases and new deaths are ratios of weekly sums, plotted on a log10 \nscale. Day-of-the-week ratios for hospital occupancy and ICU occupancy are ratios of daily \ncounts, measured 7 days apart and plotted on a log10 scale. Figure insets highlight more \nrecent ratios and trends. Graphics provided by The University of Edinburgh.")
 dev.off()
+
+tiff("weekly_ratios_portrait.tiff", height = 11.69, width = 7, units = "in", res = 400)
+gridExtra::grid.arrange(fig1, fig2, fig4, fig3, nrow = 4, bottom = "Weekly ratios for new cases and new deaths are ratios of weekly sums, plotted on a log10 \nscale. Day-of-the-week ratios for hospital occupancy and ICU occupancy are ratios of daily \ncounts, measured 7 days apart and plotted on a log10 scale. Figure insets highlight more \nrecent ratios and trends. Graphics provided by The University of Edinburgh.")
+dev.off()
 ```
 
+```{r fig.width=5.5, fig.height= 9, fig.cap="Ratios of new cases, new deaths, ICU occupancy and hospitalisations vs respective counts for previous time period. Cases and deaths are comparisons of weekly sums; ICU occupancy and hospitalisations are week over week comparisons of daily counts. Graphics provided by The University of Edinburgh."}
+tiff("weekly_ratios_newcases.tiff", height = 11.69/4, width = 5, units = "in", res = 400)
+fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020"))) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_blue) +
+  geom_point(colour = nice_blue, size = 1) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  scale_y_continuous(trans = "log10",
+                         labels = scales::comma_format(accuracy = 1),
+                         #breaks = breaks,
+                         expand = expansion(mult = 0.1)) +
+  labs( x = "End Date of Current Week",
+        y = "Weekly Ratio",
+        #title = "Change in weekly cases/deaths total as ratio of previous week",
+        subtitle = "New Cases (Source: HPS)") +
+  theme_bw(base_size = 10) +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 14, b = 0, l = 0)))
+
+fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & 
+                    !is.infinite(ratio) & date >= max(wk_gr_newcases$date)-8)) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_blue) +
+  geom_point(colour = nice_blue, size = 1) +
+  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  scale_y_continuous(trans = "log10") +
+  labs( x = "", y = "") +
+  theme_bw(base_size = 8) +
+  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
+
+fig1 <- ggdraw() +
+  draw_plot(fig1) +
+  draw_plot(fig1_inset, x = 0.57, y = .52, width = .40, height = .3)
+
+fig1
+dev.off()
+
+
+tiff("weekly_ratios_newdeaths.tiff", height = 11.69/4, width = 5, units = "in", res = 400)
+fig2 <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
+              !is.infinite(ratio) & date >= dmy("23-03-2020"))) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_red, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_red) +
+  geom_point(colour = nice_red, size = 1) +
+  scale_y_continuous(trans = "log10",
+                         #breaks = breaks,
+                         expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  labs( x = "End Date of Current Week",
+        y = "Weekly Ratio",
+        subtitle = "New Deaths (Source: HPS)") +
+  theme_bw(base_size = 10)
+
+fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
+                    !is.infinite(ratio) & date >= max(wk_gr_newdeaths$date)-8)) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_red, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_red) +
+  geom_point(colour = nice_red, size = 1) +
+  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"),expand = expansion(mult = 0.1)) +
+  scale_y_continuous(trans = "log10") +
+  labs( x = "",
+        y = "") +
+  theme_bw(base_size = 8) +
+  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
+
+fig2 <- ggdraw() +
+  draw_plot(fig2) +
+  draw_plot(fig2_inset, x = 0.57, y = .52, width = .40, height = .3)
+fig2
+dev.off()
+
+tiff("dayofweek_ratios_icuoccup.tiff", height = 11.69/4, width = 5, units = "in", res = 400)
+fig3 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
+              !is.infinite(ratio_m) & date >= dmy("23-03-2020"))) +
+  aes(x = date, y = ratio_m,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_orange) +
+  geom_point(colour = nice_orange, size = 1) +
+  scale_y_continuous(trans = "log10",
+                         #breaks = breaks,
+                         expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  labs( x = "Current Date",
+        y = "Day-Of-The-Week Ratio",
+        subtitle = "ICU Occupancy (Source: NHS Boards)") +
+  theme_bw(base_size = 10) +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)))
+
+
+
+fig3_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
+                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_icu$date)-8)) +
+  aes(x = date, y = ratio_m,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_orange) +
+  geom_point(colour = nice_orange, size = 1) +
+  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  scale_y_continuous(trans = "log10") +
+  labs( x = "",
+        y = "") +
+  theme_bw(base_size = 8) +
+  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
+
+fig3 <- ggdraw() +
+  draw_plot(fig3) +
+  draw_plot(fig3_inset, x = 0.57, y = .52, width = .40, height = .3)
+fig3
+dev.off()
+
+tiff("dayofweek_ratios_hospoccup.tiff", height = 11.69/4, width = 5, units = "in", res = 400)
+
+fig4 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
+              !is.infinite(ratio_m) & date >= dmy("23-03-2020"))) +
+  aes(x = date, y = ratio_m,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_green) +
+  geom_point(colour = nice_green, size = 1) +
+  scale_y_continuous(trans = "log10",
+                         #breaks = breaks,
+                         expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  labs( x = "Current Date",
+        y = "Day-Of-The-Week Ratio",
+        subtitle = "Hospital Occupancy (Source: NHS Boards)") +
+  theme_bw(base_size = 10) +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 14, b = 0, l = 0)))
+
+
+fig4_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
+                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_hosp$date)-8)) +
+  aes(x = date, y = ratio_m,
+    ymin = lci, ymax = uci) +
+  geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_green) +
+  geom_point(colour = nice_green, size = 1) +
+  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  scale_y_continuous(trans = "log10") +
+  labs( x = "",
+        y = "") +
+  theme_bw(base_size = 8) +
+  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
+
+fig4 <- ggdraw() +
+  draw_plot(fig4) +
+  draw_plot(fig4_inset, x = 0.57, y = 0.52, width = 0.40, height = 0.3)
+
+fig4
+dev.off()
+```
 
 
 
