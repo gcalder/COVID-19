@@ -129,7 +129,76 @@ gridExtra::grid.arrange(fig1, fig2, nrow = 2)
 
 \subsubsection*{Cumulative confirmed cases by Health Board in Scotland}
 
-```{r, fig.width=6}
+```{r, fig.width=6, eval = FALSE}
+png(filename = "CumCasesHB_16_04_2020.png", width = 6, height = 4,units = "in", res = 400)
+ft_fill <- "white"
+
+cov_offset <- function(df, ref = 10, var){
+  day_zero <- df %>% 
+    arrange(date) %>% 
+    filter({cases} >= ref) %>% 
+    pull(date) %>% 
+    min()
+  
+  df %>% 
+    mutate(days = date - day_zero) %>% 
+    filter(days >= 0) %>% 
+    mutate(days = as.numeric(days))
+}
+
+ref <- 10
+
+ts <- scot_data_raw %>%
+  rename("Total" = confirmed_cases) %>%
+  pivot_longer(Ayrshire:Total,
+               names_to = "health_board",
+               values_to = "cases") %>% 
+  mutate(health_board = fct_relevel(health_board, "Total", after = Inf)) %>% 
+  select(date, health_board, cases) %>% 
+  group_by(health_board) %>% 
+  nest() %>% 
+  mutate(offset = map(data, cov_offset, ref = ref, var = cases)) %>% 
+  unnest(offset) %>% 
+  select(-data) %>%
+  filter(health_board != "Total")
+
+p<- ts %>% 
+  group_by(health_board) %>% 
+  mutate(label = if_else(days == max(days),
+                         as.character(health_board), NA_character_)) %>%
+  ggplot() +
+  aes(x = days, cases, colour = health_board) +
+  geom_line(lwd = 0.75, alpha = 0.75) +
+  geom_point(size = 1) +
+  scale_x_continuous(breaks = function(x) seq(0, round(max(x)), 5)) +
+  scale_y_continuous(trans = "log10",
+                     breaks = c(1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 5000),
+                     labels = scales::comma_format()) +
+  guides(color = guide_legend(nrow = 4)) +
+  scale_color_manual(values = c('#e6194b', '#ffe119', '#4363d8','#800000', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#008080', '#9a6324',  '#808000', '#ffd8b1', '#000075'#, '#808080'
+                                )) +
+  labs(x = str_glue("Days since {ref}th case"),
+       y = "Cumulative Cases"
+       ) +
+  theme_bw(base_size = 10) +
+  theme(legend.position="top",
+        legend.box="horizontal", legend.margin=margin(),
+        legend.title = element_blank(),
+        plot.background = element_rect(fill = ft_fill),
+        panel.background = element_rect(fill = ft_fill),
+        panel.grid.major.y = element_line(colour = "grey70",
+                                          linetype = "solid",
+                                          size = 0.25),
+        panel.grid.major.x = element_line(colour = "grey70",
+                                          linetype = "solid",
+                                          size = 0.25))
+
+p
+dev.off()
+```
+
+
+```{r, fig.width=6, eval = TRUE}
 ft_fill <- "white"
 
 cov_offset <- function(df, ref = 10, var){
