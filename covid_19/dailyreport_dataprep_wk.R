@@ -11,6 +11,7 @@ source("weekly_ratios.R")
 # Import Scottish covid data
 #path <- "COVID-19_Scotland_data_all_2020-04-10.xlsx" 
 path <- paste0("COVID-19_Scotland_data_all_", {Sys.Date()}, ".xlsx") 
+#path <- "historic data/COVID-19_Scotland_data_all_2020-04-16.xlsx"
 # Scottish cases data
 scot_data_raw <- read_excel(path, sheet = "Cases By Health Board", skip = 1)
 scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrease")) %>%
