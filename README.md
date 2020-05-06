@@ -25,6 +25,7 @@ In a production environment, the .txt file is passed to the body of an email, to
 In the interests of security, specific details of how both reports are distributed are delibarately omitted here.
 
 *SAG Report*
+
 Make sure that the raw data from HPS and NRS are in place.
 
 ## Contributing
