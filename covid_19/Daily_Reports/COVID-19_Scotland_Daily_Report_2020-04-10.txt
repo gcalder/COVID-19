@@ -1,0 +1,39 @@
+Hello, 
+
+Here is the daily report for COVID-19 in Scotland for Friday, 10 April 2020. 
+
+For the full dashboard, including comparisons with other countries, please visit here.
+
+Please find the raw data and the full report (in HTML and PDF format) attached.
+
+Deaths:
+The death toll is currently 495.
+The number of new deaths reported today was 48, which represents a 10.7% increase on yesterday’s total.
+The doubling time for deaths over the past 7 days was 4.6 days.
+
+Cases:
+The total number of cases is currently 5,275.
+The number of new cases today is 318, which represents a 6.4% increase on yesterday’s total. 
+The doubling time for the number of cases over the past 7 days was 8.6 days.
+
+Cases per capita (measured per 10,000 head of population):
+The highest incidence over the last day was 1.2, which occurred in Fife. 
+The highest cumulative incidence is 17.1, which is in Tayside.
+
+Health Boards*:
+The largest increase in cases in absolute terms by health board was 63 cases, which occurred in Greater Glasgow and Clyde.
+The largest relative increase in cases was 15.6%, which occurred in Fife.
+The fastest doubling time over the past 7 days was 5.9 days, which occurred in Fife.
+
+Tests:
+The total number of tests reported is 28,652.
+The total number of positive cases to date is 5,275.
+The percentage of tests which were positive is currently 18.4%.
+
+*To enhance graph readability and to account for cases being reallocated across health boards, the following health boards are grouped together: Grampian, Shetland and Orkney; Highland and Western Isles.
+
+The data in this report are provided by Health Protection Scotland and published daily by the Scottish Government here.
+
+This report has been compiled in collaboration between members of the Epigroup and EERA groups at the University of Edinburgh.
+
+Thank you.
