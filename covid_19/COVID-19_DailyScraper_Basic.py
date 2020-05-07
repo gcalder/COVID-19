@@ -16,13 +16,11 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 import re
 
-#Populate yourFilePath with your file path...
 
-path = r'/Daily_Reports/'
+#Set path name
+path = r'Daily_Reports/'
 
-#/Users/gcalder2/OneDrive - University of Edinburgh
-
-#Determine Env Variables
+#Determine Environmental Variables
 tDt = date.today()
 yDt = tDt - timedelta(days=1)
 tDt_human = datetime.datetime.now().strftime('%A %d %B %Y')
@@ -63,26 +61,21 @@ df_5 = df_4.rename(columns=df_4.iloc[0])
 df_6 = df_5.dropna(axis=0, how='any')
 df_7 = df_6.drop(df_6.index[0])
 
-all_header.append(cleantext2)
-df_2 = pd.DataFrame(all_header)
-df_3 = df_2[0].str.split(',', expand=True)
-frames = [df_3, df_1]
-df_4 = pd.concat(frames)
-df_5 = df_4.rename(columns=df_4.iloc[0])
-df_6 = df_5.dropna(axis=0, how='any')
-df_7 = df_6.drop(df_6.index[0])
-    
+#Applying Fix Due to New Format of Website (addition of Hospitalisation and ICU Data)
 df_fix_1 = df_5.iloc[0:17, 0:4]
 df_fix_2 =  df_fix_1.drop([0])
 df_6 = df_fix_2.dropna(axis=0, how='any')
 df_7 = df_6
 df_7.columns = ['Health_Board','Positive_Cases','Hospitalisations','ICU']
-df_7
+
 
 df_7 = df_7.replace('\n','', regex=True)
 df_7 = df_7.replace('],','', regex=True)
 df_7 = df_7.replace('\**','',regex=True)
 df_7 = df_7.iloc[0:17, 0:2]
+
+#Remove Golden Jubilee Hospital (not a real healthboard and has a negligible number of cases)
+df_7.drop(df_7.tail(1).index,inplace=True)
 
 #Remove Commas
 df_7['Positive_Cases'] = df_7['Positive_Cases'].str.replace(',','')
@@ -204,7 +197,7 @@ p2 = round(p,1)
 yb = int(y)
 
 
-result_2 = re.search('A total of (.*) people in Scotland have been tested', text)
+result_2 = re.search('A total of (.*)people in Scotland have been tested', text)
 total_tests = (result_2.group(1))
 total_tests = total_tests.replace(',','')
 tot = int(total_tests)
@@ -338,16 +331,5 @@ df_prevx3.to_excel(writer, sheet_name = 'Cumulative Incidence Grouped')
 df_incdx.to_excel(writer,sheet_name= 'Incidence by Health Board', index=False)
 df_CPT_x.to_excel(writer,sheet_name='CPT & DPC')
 writer.save()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
 
 
