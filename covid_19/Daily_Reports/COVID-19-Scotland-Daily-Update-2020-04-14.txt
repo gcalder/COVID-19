@@ -1,0 +1,22 @@
+<p>Here is the daily report for COVID-19 in Scotland for Tuesday, 14 April 2020. For the full dashboard, including comparisons with other countries, please visit <a href="https://smazeri.shinyapps.io/Covid19_Scotland">here</a>.</p>
+<p><strong>Deaths:</strong><br />
+The death toll is currently 615.<br />
+The number of new deaths reported today was 40, which represents a 7.0% increase on yesterday’s total.<br />
+The doubling time for deaths over the past 7 days was 6.6 days.</p>
+<p><strong>Cases:</strong><br />
+The total number of cases is currently 6,358.<br />
+The number of new cases today is 291, which represents a 4.8% increase on yesterday’s total.<br />
+The doubling time for the number of cases over the past 7 days was 11.9 days.</p>
+<p><strong>Cases per capita (measured per 10,000 head of population):</strong><br />
+The highest incidence over the last day was 0.8, which occurred in Greater Glasgow and Clyde.<br />
+The highest cumulative incidence is 19.9, which is in Tayside.</p>
+<p><strong>Health Boards*:</strong><br />
+The largest increase in cases in absolute terms by health board was 89 cases, which occurred in Greater Glasgow and Clyde.<br />
+The largest relative increase in cases was 6.7%, which occurred in Ayrshire.<br />
+The fastest doubling time over the past 7 days was 9.6 days, which occurred in Fife.</p>
+<p><strong>Tests:</strong><br />
+The total number of tests reported is 32,855.<br />
+The total number of positive cases to date is 6,358.<br />
+The percentage of tests which were positive is currently 19.4%.</p>
+<p>*To enhance graph readability and to account for cases being reallocated across health boards, the following health boards are grouped together: Grampian, Shetland and Orkney; Highland and Western Isles.</p>
+<p>The data in this report are provided by Health Protection Scotland and published daily by the Scottish Government <a href="https://www.gov.scot/coronavirus-covid-19/">here</a>. This report has been compiled in collaboration between members of the <a href="https://www.wiki.ed.ac.uk/display/Epigroup/People">Epigroup</a> and <a href="https://www.ed.ac.uk/roslin/eeragroup">EERA</a> groups at the University of Edinburgh.</p>
