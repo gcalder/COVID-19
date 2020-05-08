@@ -33,38 +33,36 @@ In the interests of security, specific details of how both reports are distribut
 List of packages that need to be installed for code to run.
 
 *Python*
-`conda install pandas
-conda install numpy
-conda install bs4
-conda install lxml
-conda install openpyxl
-conda install xlsxwriter`
+
+`conda install pandas numpy bs4 lxml openpyxl xlsxwriter`
 
 *R*
-`install.packages("flexdashboard")
-install.packages("shiny")
-install.packages("readr")
-install.packages("dplyr")
-install.packages("tidyr")
-install.packages("purrr")
-install.packages("forcats")
-install.packages("stringr")
-install.packages("htmlwidgets")
-install.packages("lubridate")
-install.packages("sf")
-install.packages("RcppRoll")
-install.packages("plotly")
-install.packages("leaflet")
-install.packages("shinythemes")
-install.packages("classInt")
-install.packages("ggrepel")
-install.packages("scales")
-install.packages("leaflet.extras")
-install.packages("RColorBrewer")
-install.packages("cowplot")
-install.packages("httr")
-install.packages("spatstat.utils")
-install.packages("tinytex")
+
+`install.packages(c("flexdashboard",
+  "shiny",
+  "readr",
+  "dplyr",
+  "tidyr",
+  "purrr",
+  "forcats",
+  "stringr",
+  "htmlwidgets",
+  "lubridate",
+  "sf",
+  "RcppRoll",
+  "plotly",
+  "leaflet",
+  "shinythemes",
+  "classInt",
+  "ggrepel",
+  "scales",
+  "leaflet.extras",
+  "RColorBrewer",
+  "cowplot",
+  "httr",
+  "spatstat.utils",
+  "tinytex"))
+  
 remotes::install_github("clauswilke/colorblindr")
 `
 
