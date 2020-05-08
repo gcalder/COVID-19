@@ -38,33 +38,9 @@ List of packages that need to be installed for code to run.
 
 *R*
 
-`install.packages(c("flexdashboard",
-  "shiny",
-  "readr",
-  "dplyr",
-  "tidyr",
-  "purrr",
-  "forcats",
-  "stringr",
-  "htmlwidgets",
-  "lubridate",
-  "sf",
-  "RcppRoll",
-  "plotly",
-  "leaflet",
-  "shinythemes",
-  "classInt",
-  "ggrepel",
-  "scales",
-  "leaflet.extras",
-  "RColorBrewer",
-  "cowplot",
-  "httr",
-  "spatstat.utils",
-  "tinytex"))
+`install.packages(c("flexdashboard","shiny","readr","dplyr","tidyr","purrr","forcats","stringr","htmlwidgets","lubridate","sf","RcppRoll","plotly","leaflet","shinythemes","classInt","ggrepel","scales","leaflet.extras","RColorBrewer","cowplot","httr","spatstat.utils","tinytex"))`
   
-remotes::install_github("clauswilke/colorblindr")
-`
+`remotes::install_github("clauswilke/colorblindr")`
 
 ## Contributing
 * To contribute, please create a branch and submit a pull request to master. Please do not push directly to master.
