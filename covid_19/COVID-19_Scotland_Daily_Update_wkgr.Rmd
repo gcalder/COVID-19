@@ -289,7 +289,8 @@ w #%>%
 ```{r, eval = TRUE}
   breaks <- classIntervals(cases_by_area$confirmed_cases, n = 4, style = "jenks")$brks
   pal <- colorBin(palette = "Blues", domain = NULL, bins = breaks, na.color = "#FFFFFF")
-    breaks <- classIntervals(cases_by_area$cumulative_incidence, n = 3, style = "jenks")$brks
+  breaks <- classIntervals(cases_by_area$cumulative_incidence, n = 4, style = "jenks")$brks
+  breaks <- unique(breaks)
   pal2 <- colorBin(palette = "Blues", domain = NULL, bins = breaks, na.color = "#FFFFFF")
   
 cases_by_area$cases_popup <- paste0("<b>",cases_by_area$health_board,"</b>","<br/>", cases_by_area$confirmed_cases, " cases")
