@@ -97,13 +97,15 @@ fig1 <- ggplot(scot_data, aes(x = date, y = new_cases)) + geom_bar(stat = "ident
         labs(x="", y = "", subtitle = "Daily confirmed cases") +
         geom_hline(yintercept = 0) + theme_minimal(base_size = 12) +
         scale_x_date(date_breaks = "14 days", labels = date_format("%b %d")) +
-        theme(plot.subtitle = element_text(size = 8))
+        theme(plot.subtitle = element_text(size = 8)) +
+        theme(plot.margin = unit(c(0.1,0.4,0.1,0.1), "cm"))
 
 fig2 <- ggplot(scot_data, aes(x = date, y = confirmed_cases)) + geom_line(color = nice_blue) + geom_point(color = nice_blue) +
         labs(x="", y = "", subtitle = "Cumulative confirmed cases") +
         geom_hline(yintercept = 0) + theme_minimal(base_size = 12) +
         scale_x_date(date_breaks = "14 days", labels = date_format("%b %d")) +
-        theme(plot.subtitle = element_text(size = 8))
+        theme(plot.subtitle = element_text(size = 8)) +
+        theme(plot.margin = unit(c(0.1,0.4,0.1,0.1), "cm"))
 
 gridExtra::grid.arrange(fig1, fig2, nrow = 2)
 ```
@@ -115,13 +117,15 @@ fig1 <- ggplot(scot_deaths, aes(x = date, y = new_deaths)) + geom_bar(stat = "id
         labs(x="", y = "", subtitle = "Daily confirmed deaths") +
         geom_hline(yintercept = 0) + theme_minimal(base_size = 12) +
     scale_x_date(date_breaks = "14 days", labels = date_format("%b %d")) +
-        theme(plot.subtitle = element_text(size = 8))
+        theme(plot.subtitle = element_text(size = 8))  +
+        theme(plot.margin = unit(c(0.1,0.4,0.1,0.1), "cm"))
 
 fig2 <- ggplot(scot_deaths, aes(x = date, y = deaths)) + geom_line(color = nice_red) + geom_point(color = nice_red) +
         labs(x="", y = "", subtitle = "Cumulative confirmed deaths") +
         geom_hline(yintercept = 0) + theme_minimal(base_size = 12) +
         scale_x_date(date_breaks = "14 days", labels = date_format("%b %d")) +
-        theme(plot.subtitle = element_text(size = 8))
+        theme(plot.subtitle = element_text(size = 8))  +
+        theme(plot.margin = unit(c(0.1,0.4,0.1,0.1), "cm"))
 
 gridExtra::grid.arrange(fig1, fig2, nrow = 2)
 ```
@@ -340,7 +344,8 @@ ggplot(scot_tests_long, aes(x = ymd(Date), y = Number, fill = Result)) + geom_ba
   scale_x_date(date_breaks = "14 days", labels = date_format("%b %d")) +
   labs(fill = "", y = "", x = "") +
   geom_hline(yintercept = 0) +
-  theme(legend.position = c(0.2, 0.8))
+  theme(legend.position = c(0.2, 0.8))  +
+  theme(plot.margin = unit(c(0.1,0.4,0.1,0.1), "cm"))
 ```
 
 \newpage
@@ -350,7 +355,8 @@ ggplot(scot_tests_long, aes(x = ymd(Date), y = Number, fill = Result)) + geom_ba
 ggplot(scot_tests, aes(x = ymd(Date), y = cases_per_test*100)) + geom_line(color = nice_blue) + geom_point(color = nice_blue) +
 scale_x_date(date_breaks = "14 days", labels = date_format("%b %d")) +
 labs(x="", y = "%") +
-geom_hline(yintercept = 0) + theme_minimal(base_size = 12) 
+geom_hline(yintercept = 0) + theme_minimal(base_size = 12)  +
+        theme(plot.margin = unit(c(0.1,0.4,0.1,0.1), "cm"))
 ```
 
 
@@ -360,7 +366,8 @@ geom_hline(yintercept = 0) + theme_minimal(base_size = 12)
 ggplot(scot_tests, aes(x = ymd(Date), y = deaths_per_case*100)) + geom_line(color = nice_red) + geom_point(color = nice_red) +
 scale_x_date(date_breaks = "14 days", labels = date_format("%b %d")) +  
 labs(x="", y = "%") +
-geom_hline(yintercept = 0) + theme_minimal(base_size = 12)
+geom_hline(yintercept = 0) + theme_minimal(base_size = 12)  +
+        theme(plot.margin = unit(c(0.1,0.4,0.1,0.1), "cm"))
 ```
 
 \newpage 
