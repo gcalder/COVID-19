@@ -35,8 +35,10 @@ source("weekly_ratios.R")
 
 # Import hospital data
 ## Covid daily hospital data
-myurl <- "https://www.gov.scot/binaries/content/documents/govscot/publications/statistics/2020/04/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/documents/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/govscot%3Adocument/Data%2BTable%2B%252810-04-2020%2529.xlsx?forceDownload=true"
+myurl <- "https://www.gov.scot/binaries/content/documents/govscot/publications/statistics/2020/04/coronavirus-covid-19-trends-in-daily-data/documents/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/govscot%3Adocument/Trends%2Bin%2Bdaily%2BCOVID-19%2Bdata%2B-%2B110520.xlsx?forceDownload=true"
+#myurl <- "https://www.gov.scot/binaries/content/documents/govscot/publications/statistics/2020/04/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/documents/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/govscot%3Adocument/Data%2BTable%2B%252810-04-2020%2529.xlsx?forceDownload=true"
 GET(myurl, write_disk(tmp <- tempfile(fileext = ".xlsx")))
+GET(myurl, write_disk("hps_daily.xlsx", overwrite = TRUE))
 
 #data_hosp <- read_excel(tmp, sheet = "Table 1", skip = 3)
 data_hosp <- read_excel(tmp, sheet = "Table 2 - Hospital Care", skip = 3)
@@ -119,6 +121,7 @@ wk_gr_hosp_hosp_latest <- filter(wk_gr_hosp_hosp, date == max(wk_gr_hosp_icu$dat
 # Import NRS data
 myurl_deaths <- "https://www.nrscotland.gov.uk/files//statistics/covid19/covid-deaths-data-week-18.xlsx"
 GET(myurl_deaths, write_disk(tmp <- tempfile(fileext = ".xlsx")))
+GET(myurl_deaths, write_disk("nrs.xlsx", overwrite = TRUE))
 
 #NRS weekly
 nrs_deaths_covid_raw <- read_excel(tmp, sheet = "Table 1 - COVID deaths", skip = 3) %>%
@@ -286,7 +289,7 @@ wk_gr_nps_nrs <- wk_gr_nps_nrs %>%
 ```
 
 
-Numbers of new cases and new deaths, as reported by Health Protection Scotland (HPS), have been monitored on a daily basis (see Figures \@ref(fig:traj) and \@ref(fig:dailydeathscases)). To assess the rate of spread of COVID-19 in Scotland, we have considered the ratio of the sum of these metrics in the past week compared to their respective sums in the previous week. A similar ratio has been used to measure changes in hospital bed occupancy by comparing daily numbers of bed and ICU occupancy to those one week ago (see Figure \@ref(fig:deathscaseshospicu)). However, these statistics are potentially subject to biases and we list several caveats which should be considered when interpreting their values.
+Numbers of new cases and new deaths, as reported by Health Protection Scotland (HPS), have been monitored on a daily basis (see Figures \@ref(fig:traj) and \@ref(fig:dailydeathscases)). To assess the rate of spread of COVID-19 in Scotland, we have considered the ratio of the sum of these metrics in the past week compared to their respective sums in the previous week. A similar ratio has been used to measure changes in the number of patients in hospital by comparing daily numbers of patients in hospital and ICU to those one week ago (see Figure \@ref(fig:deathscaseshospicu)). However, these statistics are potentially subject to biases and we list several caveats which should be considered when interpreting their values.
 
 
 \subsection*{Data}
@@ -294,14 +297,14 @@ The cumulative number of cases and deaths has been reported each day since the s
 
 The National Records of Scotland (NRS) also provide a weekly report of all deaths where COVID-19 is mentioned on the death certificate (not just those confirmed by a test as provided by HPS). The report provides information by place of death, location, age and gender. 
 
-The number of COVID-19 patients in hospital and Intensive Care Units (ICUs) are reported on a daily basis. The terms 'hospital occupancy' and 'ICU occupancy' refer to the number of COVID-19 patients who are registered as being under that department's care at midnight (see Figure \@ref(fig:dailyoccupancy)).
+The number of COVID-19 patients in hospital and Intensive Care Units (ICUs) are reported on a daily basis. The terms used in this report refer to the number of patients with confirmed or suspected COVID-19 who are registered as being under that department's care at midnight (see Figure \@ref(fig:dailyoccupancy)).
 
 \subsection*{Weekly comparisons}
 We have used ratios of both cases and deaths in the past week compared to the previous week (i.e. the total over the 7 days as a ratio of the total over the previous 7 days) to monitor the weekly rate of spread of COVID-19 (see Figures \@ref(fig:deathscaseshospicu), \@ref(fig:ratiosnrshpsloc), \@ref(fig:ratiosnrshpsdaily) and Table \@ref(tab:tabdeathscaseshospicu)). Weekly totals are considered as they are less prone to week day variations than the daily values (see Caveats below).
 
-Ratios for hospital occupancy are calculated as the number of patients in hospital (or ICU) on a given day compared to the number of patients in hospital (or ICU) one week before (e.g. the ratio for `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()))` is ‘occupancy on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()))`’ divided by ‘occupancy on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-7))`’).
+Ratios for patients in hospital are calculated as the number of patients in hospital (or ICU) on a given day compared to the number of patients in hospital (or ICU) one week before (e.g. the ratio for `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()))` is ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()))`’ divided by ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-7))`’).
 
-The confidence interval for the log of the ratio of two frequencies (w1/w2) may be approximated by {1/w1 + 1/w2}, based on assuming a Poisson distribution for w1 and w2 (w1 = total cases (or deaths) in past week and w2 = total cases (or death) in previous week, or for bed occupancy w1=beds occupied on the given day, w2=beds occupied on that day the week before). The approximation is obtained from the standard formula: 
+The confidence interval for the log of the ratio of two frequencies (w1/w2) may be approximated by {1/w1 + 1/w2}, based on assuming a Poisson distribution for w1 and w2 (w1 = total cases (or deaths) in past week and w2 = total cases (or death) in previous week, or for number of patients in hospital w1=number of patients on the given day, w2=number of patients on that day the week before). The approximation is obtained from the standard formula: 
 \hfill \break
 
 
@@ -363,7 +366,7 @@ latest_nrs_hps_date <- format(max(wk_gr_nps_nrs$date), '%d/%m/%Y')
 
 HPS death numbers include individuals who have positive tests but are not in hospital. Increased testing in the community (particularly in care homes) will cause more deaths to be counted and make HPS death numbers difficult to compare over time. The NRS death numbers are expected to allow a more consistent comparison, and also allow care home and other non-hospital deaths to be considered separately. However, these data are only issued on a weekly basis and they will be less up-to-date than the data from HPS. The latest weekly ratio for NRS deaths (available to `r latest_nrs_hps_date`), `r filter(latest_nrs_hps, Location == "NRS")$ratio_m` (95% CI `r filter(latest_nrs_hps, Location == "NRS")$lci`-`r filter(latest_nrs_hps, Location == "NRS")$uci`), is now noticeably lower than that for HPS deaths `r filter(latest_nrs_hps, Location == "HPS")$ratio_m` (95% CI `r filter(latest_nrs_hps, Location == "HPS")$lci`-`r filter(latest_nrs_hps, Location == "HPS")$uci`) and might be expected to more accurately reflect the true underlying rate of spread of COVID-19 (see Figures \@ref(fig:ratiosnrshpsloc) and \@ref(fig:ratiosnrshpsdaily)).
 
-Given the later availability of NRS data and the variable factors affecting both the number of cases and HPS deaths, some consideration might be given to hospital occupancy data (see Figure \@ref(fig:deathscaseshospicu)). However, these data will not reflect deaths in care homes, and will be affected by any change in criteria for admission to hospital or to ICU. The recent increase in the numbers of patients taken to hospital by ambulance coupled with a lower number of cases, may indicate that admission criteria have been relaxed recently and a higher proportion of COVID-19 cases are being admitted in hospital.
+Given the later availability of NRS data and the variable factors affecting both the number of cases and HPS deaths, some consideration might be given to hospital data (see Figure \@ref(fig:deathscaseshospicu)). However, these data will not reflect deaths in care homes, and will be affected by any change in criteria for admission to hospital or to ICU.
 
 
 ```{r}
@@ -392,7 +395,7 @@ cases_deaths <- bind_rows(select(scot_data, date, new_cases, confirmed_cases) %>
               mutate(type = "deaths") %>%
               mutate(change = roll_sumr(new, n = 7)))
 
-arrow_date <- max(cases_deaths$date)-20
+arrow_date <- max(cases_deaths$date)-25
 #arrow_date <- ymd("2020-03-23")
 cases_deaths_date <- subset(cases_deaths, date == arrow_date) %>%
                      mutate(y = change + c(50, 20),
@@ -467,14 +470,14 @@ fig1 + fig2
 \hfill \break
 \hfill \break
 
-```{r dailyoccupancy, fig.width=6, fig.height=3, fig.cap="Hospital and ICU occupancy at midnight. Daily totals include both confirmed and suspected COVID-19 cases"}
+```{r dailyoccupancy, fig.width=6, fig.height=3, fig.cap="Number of patients in hospital and ICU at midnight. Daily totals include both confirmed and suspected COVID-19 cases"}
 fig1 <- data_hosp_icu %>%
   group_by(date) %>%
   summarise(Number = sum(Number, na.rm = T)) %>%
   ggplot() + 
   geom_bar(aes(x = date, y = Number), stat = "identity", colour = "white", size = 0.2) +
   theme_bw() +
-  labs(x = "Date", y = "ICU Occupancy") +
+  labs(x = "Date", y = "Patients in ICU") +
   theme(legend.position = c(0.17, 0.8), 
         legend.title = element_blank()) +
   theme(plot.margin = unit(c(0,25,0,0), "pt"))
@@ -486,7 +489,7 @@ fig2 <- data_hosp_hosp %>%
   geom_bar(aes(x = date, y = Number), stat = "identity", colour = "white", size = 0.2) +
   #scale_fill_manual(values = viridis(3, option = "D")[c(2,3,1)]) + 
   theme_bw() +
-  labs(x = "Date", y = "Hospital Occupancy") +
+  labs(x = "Date", y = "Patients in Hospital") +
   theme(legend.position = c(0.17, 0.8), 
         legend.title = element_blank()) +
   theme(plot.margin = unit(c(0,0,0,25), "pt"))
@@ -499,7 +502,8 @@ fig1 + fig2
 \thispagestyle{empty}
 
 
-```{r deathscaseshospicu, fig.width=5.5, fig.height= 9, fig.cap="Weekly ratios for new cases and new deaths are ratios of weekly sums, plotted on a log10 scale. Day-of-the-week ratios for hospital occupancy and ICU occupancy are ratios of daily counts, measured 7 days apart and plotted on a log10 scale. Figure insets highlight more recent ratios and trends."}
+```{r deathscaseshospicu, fig.width=5.5, fig.height= 9, fig.cap="Weekly ratios for new cases and new deaths are ratios of weekly sums, plotted on a log10 scale. Day-of-the-week ratios for patients in hospital and ICU are ratios of daily counts, measured 7 days apart and plotted on a log10 scale. Figure insets highlight ratios and trends for the last 7 days."}
+
 fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020"))) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
@@ -507,7 +511,8 @@ fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_blue) +
   geom_point(colour = nice_blue, size = 1) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+               limits = c(dmy("23-03-2020"), NA)) +
   scale_y_continuous(trans = "log10",
                          labels = scales::comma_format(accuracy = 1),
                          #breaks = breaks,
@@ -517,17 +522,17 @@ fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020
         #title = "Change in weekly cases/deaths total as ratio of previous week",
         subtitle = "New Cases (Source: HPS)") +
   theme_bw(base_size = 10) +
-  theme(axis.title.y = element_text(margin = margin(t = 0, r = 14, b = 0, l = 0)))
+  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm"))
 
 fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & 
-                    !is.infinite(ratio) & date >= max(wk_gr_newcases$date)-8)) +
+                    !is.infinite(ratio) & date >= max(wk_gr_newcases$date)-6)) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_blue) +
   geom_point(colour = nice_blue, size = 1) +
-  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "3 days", labels = date_format("%b %d")) +
   scale_y_continuous(trans = "log10") +
   labs( x = "", y = "") +
   theme_bw(base_size = 8) +
@@ -535,7 +540,7 @@ fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) &
 
 fig1 <- ggdraw() +
   draw_plot(fig1) +
-  draw_plot(fig1_inset, x = 0.57, y = .52, width = .40, height = .3)
+  draw_plot(fig1_inset, x = 0.57, y = .54, width = .37, height = .3)
 
 fig2 <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
               !is.infinite(ratio) & date >= dmy("23-03-2020"))) +
@@ -548,21 +553,23 @@ fig2 <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) &
   scale_y_continuous(trans = "log10",
                          #breaks = breaks,
                          expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+               limits = c(dmy("23-03-2020"), NA)) +
   labs( x = "End Date of Current Week",
         y = "Weekly Ratio",
         subtitle = "New Deaths (Source: HPS)") +
-  theme_bw(base_size = 10)
+  theme_bw(base_size = 10) + 
+  theme(plot.margin = unit(c(0.2,0.5,0.2,0.2), "cm"))
 
 fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
-                    !is.infinite(ratio) & date >= max(wk_gr_newdeaths$date)-8)) +
+                    !is.infinite(ratio) & date >= max(wk_gr_newdeaths$date)-6)) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_red, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_red) +
   geom_point(colour = nice_red, size = 1) +
-  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"),expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "3 days", labels = date_format("%b %d"),expand = expansion(mult = 0.1)) +
   scale_y_continuous(trans = "log10") +
   labs( x = "",
         y = "") +
@@ -571,7 +578,7 @@ fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) &
 
 fig2 <- ggdraw() +
   draw_plot(fig2) +
-  draw_plot(fig2_inset, x = 0.57, y = .52, width = .40, height = .3)
+  draw_plot(fig2_inset, x = 0.57, y = .54, width = .37, height = .3)
 
 
 fig3 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
@@ -585,24 +592,25 @@ fig3 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) &
   scale_y_continuous(trans = "log10",
                          #breaks = breaks,
                          expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+               limits = c(dmy("23-03-2020"), NA)) +
   labs( x = "Current Date",
         y = "Day-Of-The-Week Ratio",
-        subtitle = "ICU Occupancy (Source: NHS Boards)") +
-  theme_bw(base_size = 10) +
-  theme(axis.title.y = element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)))
+        subtitle = "Patients in ICU (Source: NHS Boards)") +
+  theme_bw(base_size = 10)  + 
+  theme(plot.margin = unit(c(0.2,0.4,0.2,0.3), "cm"))
 
 
 
 fig3_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
-                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_icu$date)-8)) +
+                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_icu$date)-6)) +
   aes(x = date, y = ratio_m,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_orange) +
   geom_point(colour = nice_orange, size = 1) +
-  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "3 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
   scale_y_continuous(trans = "log10") +
   labs( x = "",
         y = "") +
@@ -611,36 +619,36 @@ fig3_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) &
 
 fig3 <- ggdraw() +
   draw_plot(fig3) +
-  draw_plot(fig3_inset, x = 0.57, y = .52, width = .40, height = .3)
+  draw_plot(fig3_inset, x = 0.57, y = .54, width = .37, height = .3)
 
 fig4 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
               !is.infinite(ratio_m) & date >= dmy("23-03-2020"))) +
   aes(x = date, y = ratio_m,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.1) +
   geom_line(colour = nice_green) +
   geom_point(colour = nice_green, size = 1) +
   scale_y_continuous(trans = "log10",
                          #breaks = breaks,
                          expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+               limits = c(dmy("23-03-2020"), NA)) +
   labs( x = "Current Date",
         y = "Day-Of-The-Week Ratio",
-        subtitle = "Hospital Occupancy (Source: NHS Boards)") +
-  theme_bw(base_size = 10) +
-  theme(axis.title.y = element_text(margin = margin(t = 0, r = 14, b = 0, l = 0)))
-
+        subtitle = "Patients in Hospital (Source: NHS Boards)") +
+  theme_bw(base_size = 10)  + 
+  theme(plot.margin = unit(c(0.2,0.4,0.2,0.3), "cm"))
 
 fig4_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
-                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_hosp$date)-8)) +
+                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_hosp$date)-6)) +
   aes(x = date, y = ratio_m,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_green) +
   geom_point(colour = nice_green, size = 1) +
-  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "3 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
   scale_y_continuous(trans = "log10") +
   labs( x = "",
         y = "") +
@@ -649,7 +657,7 @@ fig4_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) &
 
 fig4 <- ggdraw() +
   draw_plot(fig4) +
-  draw_plot(fig4_inset, x = 0.57, y = 0.52, width = 0.40, height = 0.3)
+  draw_plot(fig4_inset, x = 0.57, y = .54, width = .37, height = .3)
 
 gridExtra::grid.arrange(fig1, fig2, fig4, fig3, nrow = 4) 
 ```
@@ -659,8 +667,8 @@ gridExtra::grid.arrange(fig1, fig2, fig4, fig3, nrow = 4)
 ```{r tabdeathscaseshospicu}
 bind_rows(wk_gr_newcases %>% filter(date == max(wk_gr_newcases$date)) %>% mutate(Measure = "New Cases (Source: HPS)"),
 wk_gr_newdeaths %>% filter(date == max(wk_gr_newdeaths$date)) %>% mutate(Measure = "New Deaths (Source: HPS)"),
-wk_gr_hosp_hosp %>% filter(date == max(wk_gr_hosp_hosp$date)) %>% mutate(Measure = "Hospital Occupancy (Source: NHS Boards)"),
-wk_gr_hosp_icu %>% filter(date == max(wk_gr_hosp_icu$date)) %>% mutate(Measure = "ICU Occupancy (Source: NHS Boards)")) %>%
+wk_gr_hosp_hosp %>% filter(date == max(wk_gr_hosp_hosp$date)) %>% mutate(Measure = "Patients in Hospital (Source: NHS Boards)"),
+wk_gr_hosp_icu %>% filter(date == max(wk_gr_hosp_icu$date)) %>% mutate(Measure = "Patients in ICU (Source: NHS Boards)")) %>%
   mutate(Ratio = formatC(round(ratio_m,2), format='f', digits=2),
          lci = formatC(round(lci,2), format='f', digits=2),
          uci = formatC(round(uci,2), format='f', digits=2)) %>%
@@ -668,7 +676,7 @@ wk_gr_hosp_icu %>% filter(date == max(wk_gr_hosp_icu$date)) %>% mutate(Measure =
   select(Measure, Ratio, `95% CI`) %>%
 knitr::kable(
   booktabs = TRUE, escape = T,
-  caption = str_glue("Most recent estimates of ratios and their 95\\% confidence intervals (CI). Weekly ratios for new cases and new deaths are ratios of weekly sums. Day-of-the-week ratios for hospital occupancy and ICU occupancy are ratios of daily counts, measured 7 days apart. Date: ", format(max(wk_gr_newcases$date), '%d/%m/%Y'),"."))
+  caption = str_glue("Most recent estimates of ratios and their 95\\% confidence intervals (CI). Weekly ratios for new cases and new deaths are ratios of weekly sums. Day-of-the-week ratios for number of patients in hospital and ICU are ratios of daily counts, measured 7 days apart. Date: ", format(max(wk_gr_newcases$date), '%d/%m/%Y'),"."))
 ```
 
 \hfill \break
