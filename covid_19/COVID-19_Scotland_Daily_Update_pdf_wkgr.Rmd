@@ -395,7 +395,7 @@ fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 11, b = 0, l = 0)))
 
 fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & 
-                    !is.infinite(ratio) & date >= max(wk_gr_newcases$date)-8)) +
+                    !is.infinite(ratio) & date >= max(wk_gr_newcases$date)-6)) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
@@ -409,7 +409,7 @@ fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) &
 
 fig1 <- ggdraw() +
   draw_plot(fig1) +
-  draw_plot(fig1_inset, x = 0.52, y = .48, width = .46, height = .4)
+  draw_plot(fig1_inset, x = 0.52, y = .49, width = .46, height = .4)
 
 fig2 <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
               !is.infinite(ratio) & date >= dmy("23-03-2020"))) +
@@ -429,7 +429,7 @@ fig2 <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) &
   theme_bw(base_size = 12)
 
 fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
-                    !is.infinite(ratio) & date >= max(wk_gr_newdeaths$date)-8)) +
+                    !is.infinite(ratio) & date >= max(wk_gr_newdeaths$date)-6)) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_red, alpha = 0.4) +
@@ -444,7 +444,7 @@ fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) &
 
 fig2 <- ggdraw() +
   draw_plot(fig2) +
-  draw_plot(fig2_inset, x = 0.52, y = .48, width = .46, height = .40)
+  draw_plot(fig2_inset, x = 0.52, y = .49, width = .46, height = .40)
 
 
 gridExtra::grid.arrange(fig1, fig2, nrow = 2) 
@@ -473,7 +473,7 @@ fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 14, b = 0, l = 0)))
 
 fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & 
-                    !is.infinite(ratio) & date >= max(wk_gr_newcases$date)-8)) +
+                    !is.infinite(ratio) & date >= max(wk_gr_newcases$date)-6)) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
@@ -488,7 +488,7 @@ fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) &
 
 fig1 <- ggdraw() +
   draw_plot(fig1) +
-  draw_plot(fig1_inset, x = 0.57, y = .52, width = .40, height = .3)
+  draw_plot(fig1_inset, x = 0.57, y = .53, width = .40, height = .3)
 
 fig2 <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
               !is.infinite(ratio) & date >= dmy("23-03-2020"))) +
@@ -508,7 +508,7 @@ fig2 <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) &
   theme_bw(base_size = 10)
 
 fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
-                    !is.infinite(ratio) & date >= max(wk_gr_newdeaths$date)-8)) +
+                    !is.infinite(ratio) & date >= max(wk_gr_newdeaths$date)-6)) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_red, alpha = 0.4) +
@@ -524,7 +524,7 @@ fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) &
 
 fig2 <- ggdraw() +
   draw_plot(fig2) +
-  draw_plot(fig2_inset, x = 0.57, y = .52, width = .40, height = .3)
+  draw_plot(fig2_inset, x = 0.57, y = .53, width = .40, height = .3)
 
 
 fig3 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
@@ -548,7 +548,7 @@ fig3 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) &
 
 
 fig3_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
-                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_icu$date)-8)) +
+                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_icu$date)-6)) +
   aes(x = date, y = ratio_m,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
@@ -564,7 +564,7 @@ fig3_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) &
 
 fig3 <- ggdraw() +
   draw_plot(fig3) +
-  draw_plot(fig3_inset, x = 0.57, y = .52, width = .40, height = .3)
+  draw_plot(fig3_inset, x = 0.57, y = .53, width = .40, height = .3)
 
 fig4 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
               !is.infinite(ratio_m) & date >= dmy("23-03-2020"))) +
@@ -586,7 +586,7 @@ fig4 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) &
 
 
 fig4_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
-                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_hosp$date)-8)) +
+                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_hosp$date)-6)) +
   aes(x = date, y = ratio_m,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
@@ -602,7 +602,7 @@ fig4_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) &
 
 fig4 <- ggdraw() +
   draw_plot(fig4) +
-  draw_plot(fig4_inset, x = 0.57, y = 0.52, width = 0.40, height = 0.3)
+  draw_plot(fig4_inset, x = 0.57, y = 0.53, width = 0.40, height = 0.3)
 
 gridExtra::grid.arrange(fig1, fig2, fig4, fig3, nrow = 4) 
 ```
