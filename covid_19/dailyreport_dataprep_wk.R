@@ -119,6 +119,10 @@ wk_gr_newdeaths <- scot_deaths %>% select(new_deaths, date) %>%
   significance_wk()
 
 wk_gr_newcases_hb <- scot_data_health_board %>% rename("outcome" = new_cases) %>%
+  #mutate(outcome = case_when(date == ymd("2020-05-13") & health_board == "Dumfries and Galloway" ~ 0,
+  #                           TRUE ~ outcome)) %>%
+  mutate(outcome = case_when(outcome < 0 ~ 0,
+                             TRUE ~ outcome)) %>%
   group_by(health_board) %>%
   nest() %>%
   mutate(gr = map(data, ~weekly_ratios(.x))) %>%
