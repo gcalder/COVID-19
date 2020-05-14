@@ -1,0 +1,71 @@
+---
+title: "Monitoring the COVID-19 Pandemic in Scotland - Methods"
+date: "`r format(Sys.time(), '%d %B, %Y')`" 
+header-includes:
+   - \usepackage{booktabs}
+   - \usepackage{float}
+   - \floatplacement{figure}{H}
+output:
+  bookdown::pdf_document2:
+    latex_engine: xelatex
+    toc: no
+---
+
+
+```{r setup, include=FALSE}
+#date: "`r format(Sys.time(), '%d %B, %Y')`" 
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.pos = 'H')
+# Load packages
+library(flexdashboard) ; library(shiny) ; library(readr); library(dplyr); library(tidyr); library(purrr); library(forcats); library(stringr); library(htmlwidgets); library(lubridate); library(sf); library(RcppRoll); library(plotly); library(shinythemes);library(leaflet); library(classInt); library(ggrepel); library(scales); library(leaflet.extras); library(RColorBrewer);library(toOrdinal);
+library(colorblindr); library(readxl);library(spatstat.utils);library(httr);library(cowplot)
+```
+
+
+Numbers of new cases and new deaths, as reported by Health Protection Scotland (HPS), have been monitored on a daily basis. To assess the rate of spread of COVID-19 in Scotland, we have considered the ratio of the sum of these metrics in the past week compared to their respective sums in the previous week. A similar ratio has been used to measure changes in hospital bed occupancy by comparing daily numbers of bed and ICU occupancy to those one week ago. However, these statistics are potentially subject to biases and we list several caveats which should be considered when interpreting their values.
+
+\subsection*{Data}
+The cumulative number of cases and deaths has been reported each day since the start of the pandemic in Scotland by HPS. The numbers include deaths which have been registered with National Records of Scotland (NRS) where a laboratory confirmed report of COVID-19 in the 28 days prior to death exists. These numbers are expected to capture the majority of deaths occurring in hospitals, but a lower proportion of those in care homes and the community. 
+
+The NRS also provide a weekly report of all deaths where COVID-19 is mentioned on the death certificate (not just those confirmed by a test as provided by HPS). The report provides information by place of death, location, age and gender. 
+
+The number of COVID-19 patients in hospital and Intensive Care Units (ICUs) are reported on a daily basis. The terms used in this report refer to the number of patients with confirmed or suspected COVID-19 who are registered as being under that department's care at midnight).
+
+\subsection*{Weekly comparisons}
+We have used ratios of both cases and deaths in the past week compared to the previous week (i.e. the total over the 7 days as a ratio of the total over the previous 7 days) to monitor the weekly rate of spread of COVID-19. Weekly totals are considered as they are less prone to week day variations than the daily values.
+
+Ratios for patients in hospital are calculated as the number of patients in hospital (or ICU) on a given day compared to the number of patients in hospital (or ICU) one week before (e.g. the ratio for `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()))` is ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()))`’ divided by ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-7))`’).
+
+\subsection*{Weekly comparisons}
+We have used ratios of both cases and deaths in the past week compared to the previous week (i.e. the total over the 7 days as a ratio of the total over the previous 7 days) to monitor the weekly rate of spread of COVID-19. Weekly totals are considered as they are less prone to week day variations than the daily values.
+
+Ratios for hospital occupancy are calculated as the number of patients in hospital (or ICU) on a given day compared to the number of patients in hospital (or ICU) one week before (e.g. the ratio for `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()))` is ‘occupancy on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()))`’ divided by ‘occupancy on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-7))`’).
+
+The confidence interval for the log of the ratio of two frequencies (w1/w2) may be approximated by {1/w1 + 1/w2}, based on assuming a Poisson distribution for w1 and w2 (w1 = total cases (or deaths) in past week and w2 = total cases (or death) in previous week, or for bed occupancy w1=beds occupied on the given day, w2=beds occupied on that day the week before). The approximation is obtained from the standard formula: 
+\hfill \break
+
+
+\begin{tabular}{rrll}\
+& $Var\{log(a)\}$ & $\approx$ & $Var(a)/Mean(a)^2$\\
+&  & = & $a/a^2$ for a Poisson frequency \\
+& & = & $1/a$ \\
+& & & \\
+\multicolumn{2}{c}{The ratio on a log scale may be expressed:} & &\\
+& & & \\
+& $log(w1/w2)$ & = & $log(w1)$ – $log(w2)$ \\
+& & & \\
+ \multicolumn{2}{r}{giving} & &\\
+& & & \\
+& $Var\{log(w1/w2)\} $ & = & $Var\{log(w1)$ - $log(w2)\}$\\
+& & = & $Var\{log(w1)\}$ + $Var\{log(w2)\}$  \\
+&  & = &  $\{1/w1 + 1/w2\}$ \\
+& & & \\
+ \multicolumn{2}{r}{and} & &\\
+&  & & \\
+& $SE\{log(w1/w2)\}$ & = & $\sqrt\{1/w1$ + $1/w2\}$ \\
+\end{tabular}
+
+
+\hfill \break
+The 95% confidence interval is then calculated as log(w1/w2) ± 1.96 x SE, which is exponentiated to provide the confidence intervals displayed.
+
+
