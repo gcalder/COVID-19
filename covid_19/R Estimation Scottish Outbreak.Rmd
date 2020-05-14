@@ -18,13 +18,36 @@ library(incidence)
 library(cowplot)
 library(viridis)
 library(knitr)
+library(readxl)
 
-cases <- read_csv("scot_data.csv") %>%
-  select(date, new_cases, confirmed_cases)
+# Import Scottish covid data
+#path <- "COVID-19_Scotland_data_all_2020-04-10.xlsx" 
+path <- paste0("Daily_Reports/COVID-19_Scotland_data_all_", {Sys.Date()-1}, ".xlsx") 
+# Scottish cases data
+scot_data_raw <- read_excel(path, sheet = "Cases By Health Board", skip = 1)
+scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrease")) %>%
+              rename(confirmed_cases= Total,
+                     Date = Health_Board) %>%
+              mutate(date = lubridate::ymd(Date)) %>%
+              select(-Date) 
+  
+scot_data_raw$date[nrow(scot_data_raw)] <- scot_data_raw$date[nrow(scot_data_raw)-1] + days(1)
+#scot_data_raw$confirmed_cases[nrow(scot_data_raw)] <- 4565 ## REMOVE
+
+scot_data_raw <- scot_data_raw %>%
+              mutate(date = date - days(1))
+
+cases <- scot_data_raw %>%
+             mutate(new_cases = confirmed_cases - replace_na(lag(confirmed_cases),0)) %>%
+             mutate(doubling_time_week = 7*log(2)/log(confirmed_cases/replace_na(lag(confirmed_cases,7),0))) 
+
+
+#cases <- read_csv("scot_data.csv") %>%
+#  select(date, new_cases, confirmed_cases)
 
 ```
 
-R estimation over the preceding 7 days using R package [EpiEstim](https://cran.r-project.org/web/packages/EpiEstim/vignettes/demo.html), based on daily cases reported.
+R estimation over the preceding 7 days using R package [EpiEstim](https://cran.r-project.org/web/packages/EpiEstim/vignettes/demo.html), based on daily cases reported.Their methos is described in [this publication](https://www.sciencedirect.com/science/article/pii/S1755436519300350).
 
 Serial interval sources:
 
@@ -113,7 +136,7 @@ fig1_inset <- ggplot(filter(df_all, date > max(df_all$date)-8), aes(x = date, y 
   geom_ribbon(alpha = 0.2) +
   geom_line(aes(colour = factor(si))) + 
   geom_hline(yintercept = 1, linetype = "dashed") +
-  scale_y_continuous(breaks = c(0.85, 0.9, 0.95, 1.0, 1.05, 1.1)) +
+  scale_y_continuous(breaks = c(0.7,0.75,0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1)) +
   scale_x_date(date_breaks = "2 days", labels = date_format("%b %d")) +
   #scale_fill_manual(values = c(nice_blue, nice_red, nice_green, nice_orange)) + 
   #scale_colour_manual(values = c(nice_blue, nice_red, nice_green, nice_orange)) +
