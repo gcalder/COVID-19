@@ -1,5 +1,5 @@
 #df <- scot_deaths %>% select(new_deaths, date) %>%
-#      mutate(outcome = new_deaths)
+#mutate(outcome = new_deaths) 
 
 #df <- scot_data %>% select(new_cases, date) %>%
 #  mutate(outcome = new_cases)
@@ -25,7 +25,6 @@ df_long <- df %>%
   nest() %>%
   mutate(mod = map(data, ~ glm(new_numbers_week ~ week,
                               data = .x, family = poisson))) %>%
-  #mutate(log_growth = map_dbl(coef, "weekchange_prev")) %>% 
   mutate(ratio_m = map_dbl(mod, ~ exp(coef(.x)["weekchange"]))) %>% 
   mutate(lci = map_dbl(mod, ~ exp(confint(.x)["weekchange", "2.5 %"]))) %>%
   mutate(uci = map_dbl(mod, ~ exp(confint(.x)["weekchange", "97.5 %"]))) %>%
