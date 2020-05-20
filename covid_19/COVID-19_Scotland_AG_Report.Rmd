@@ -64,7 +64,7 @@ GET(myurl, write_disk("hps_daily.xlsx", overwrite = TRUE))
 
 #data_hosp <- read_excel(tmp, sheet = "Table 1", skip = 3)
 data_hosp <- read_excel(tmp, sheet = "Table 2 - Hospital Care", skip = 3) 
-data_hosp <- filter(data_hosp, `...1` != Sys.Date()) # CHANGE
+#data_hosp <- filter(data_hosp, `...1` != Sys.Date()) # CHANGE
 
 data_hosp <- data_hosp %>%
   rename("date" = "...1",
@@ -139,7 +139,7 @@ wk_gr_hosp_hosp <- data_hosp %>%
 wk_gr_hosp_hosp_latest <- filter(wk_gr_hosp_hosp, date == max(wk_gr_hosp_icu$date))
 
 # Import NRS data
-myurl_deaths <- "https://www.nrscotland.gov.uk/files//statistics/covid19/covid-deaths-data-week-19.xlsx"
+myurl_deaths <- "https://www.nrscotland.gov.uk/files//statistics/covid19/covid-deaths-data-week-20.xlsx"
 GET(myurl_deaths, write_disk(tmp <- tempfile(fileext = ".xlsx")))
 GET(myurl_deaths, write_disk("nrs.xlsx", overwrite = TRUE))
 
@@ -147,7 +147,7 @@ GET(myurl_deaths, write_disk("nrs.xlsx", overwrite = TRUE))
 nrs_deaths_covid_raw <- read_excel(tmp, sheet = "Table 1 - COVID deaths", skip = 3) %>%
   select(-`Year to Date`) %>%
   rename("Details" = "...2",
-         "Total" = "...23")
+         "Total" = "...24")
 
 nrs_deaths_covid <- nrs_deaths_covid_raw %>% filter(`Week beginning` == "Deaths involving COVID-194") %>%
   pivot_longer(cols = `43829`:names(nrs_deaths_covid_raw)[ncol(nrs_deaths_covid_raw)-1],
@@ -199,7 +199,7 @@ wk_gr_nrs_deaths_hb <- nrs_deaths_covid_hb %>%
 
 # Import Scottish covid data
 #path <- "COVID-19_Scotland_data_all_2020-04-10.xlsx" 
-path <- paste0("Daily_Reports/COVID-19_Scotland_data_all_", {Sys.Date()-2}, ".xlsx") 
+path <- paste0("Daily_Reports/COVID-19_Scotland_data_all_", {Sys.Date()}, ".xlsx") 
 # Scottish cases data
 scot_data_raw <- read_excel(path, sheet = "Cases By Health Board", skip = 1)
 scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrease")) %>%
@@ -531,10 +531,7 @@ filter(date == max(wk_gr_nps_nrs$date)) %>%
 latest_nrs_hps_date <- format(max(wk_gr_nps_nrs$date), '%d/%m/%Y')
 ```
 
-HPS death numbers include individuals who have positive tests but are not in hospital. Increased testing in the community (particularly in care homes) will cause more deaths to be counted and make HPS death numbers difficult to compare over time. The NRS death numbers are expected to provide a more consistent comparison, and also to allow care home and other non-hospital deaths to be considered separately. However, these data are only issued on a weekly basis and they will be less up-to-date than the data from HPS. The latest weekly ratio for NRS deaths, `r filter(latest_nrs_hps, Location == "NRS")$ratio_m` (95% CI `r filter(latest_nrs_hps, Location == "NRS")$lci`-`r filter(latest_nrs_hps, Location == "NRS")$uci`), is lower than the equivalent value for HPS deaths `r filter(latest_nrs_hps, Location == "HPS")$ratio_m` (95% CI `r filter(latest_nrs_hps, Location == "HPS")$lci`-`r filter(latest_nrs_hps, Location == "HPS")$uci`) and might be expected to more accurately reflect the true underlying rate of spread of COVID-19 (based on NRS data up to `r latest_nrs_hps_date`; see Figures \@ref(fig:ratiosnrshpsloc) and \@ref(fig:ratiosnrshpsdaily)).
-
-Given the later availability of NRS data and the variable factors affecting both the number of cases and HPS deaths, some consideration might be given to hospital data (see Figure \@ref(fig:deathscaseshospicu)). However, these data will not reflect deaths in care homes. They will also be affected by any change in the guidance for admission and discharge during the two week period considered for the ratio. Recent changes to the guidance for care home residents may be causing a greater proportion of these cases to be admitted to hospital and for longer stays.
-
+HPS death numbers include individuals who have positive tests but are not in hospital. Increased testing in the community (particularly in care homes) will cause more deaths to be counted and make HPS death numbers difficult to compare over time. The NRS death numbers are expected to provide a more consistent comparison, and also to allow care home and other non-hospital deaths to be considered separately. However, these data are only issued on a weekly basis and they will be less up-to-date than the data from HPS. The latest weekly ratio for NRS deaths, `r filter(latest_nrs_hps, Location == "NRS")$ratio_m` (95% CI `r filter(latest_nrs_hps, Location == "NRS")$lci`-`r filter(latest_nrs_hps, Location == "NRS")$uci`), is lower than the equivalent value for HPS deaths `r filter(latest_nrs_hps, Location == "HPS")$ratio_m` (95% CI `r filter(latest_nrs_hps, Location == "HPS")$lci`-`r filter(latest_nrs_hps, Location == "HPS")$uci`) and might be expected to be a more accurate reflection of the change in death rate (based on NRS data up to `r latest_nrs_hps_date`; see Figures \@ref(fig:ratiosnrshpsloc) and \@ref(fig:ratiosnrshpsdaily)).
 
 ```{r}
 nrs_hosp <- filter(wk_gr_nps_nrs, Location =="Hospital" & date == max(wk_gr_nps_nrs$date))
@@ -542,19 +539,20 @@ nrs_carehomes <- filter(wk_gr_nps_nrs, Location =="Care Home" & date == max(wk_g
 nrs_agegroup_85 <- filter(wk_gr_nrs_deaths_age, `Age Group` == "85+" & date ==max(wk_gr_nrs_deaths_age$date))
 ```
 
-The ratios by place of death (see Figure \@ref(fig:ratiosnrshpsloc)) will also be subject to any variation in hospital admission policy. For example, if the proportion of care home residents being admitted to hospital has increased over a two week period, this would affect the ratios for deaths in care homes and in hospitals. <!--Consideration of the weekly deaths ratio for the oldest age group may provide some additional insight - the latest ratio for deaths is `r round(nrs_agegroup_85$ratio_m,2)` (95% CI: `r round(nrs_agegroup_85$lci,2)`-`r round(nrs_agegroup_85$uci,2)`) for people aged 85 or more, suggesting the rate of death in this group is currently reducing.-->
-
-The use of weekly ratios helps to smooth out variations occurring across week days, however they will still be affected by public holidays. For example, lower numbers of deaths were registered on Easter Monday (13th April) and on May day (4th May), with higher numbers registered on the following Tuesdays. This caused artificially low ratios to be obtained on the two Monday holidays and artificially high ratios on the Mondays of the following weeks (20th April and 11th May). Consideration will be given to making an adjustment to
-the ratios for public holidays in future reports.
+Given the later availability of NRS data and the variable factors affecting both the number of cases and HPS deaths, some consideration might be given to hospital data (see Figure \@ref(fig:deathscaseshospicu)). However, these data will not reflect deaths in care homes. They will also be affected by any change in the guidance for admission and discharge during the two week period considered for the ratio. Recent changes to the guidance for care home residents may be causing a greater proportion of these cases to be admitted to hospital and for longer stays. The ratios by place of death (see Figure \@ref(fig:ratiosnrshpsloc)) will also be subject to any variation in hospital admission policy. For example, if the proportion of care home residents being admitted to hospital has increased over a two week period, this would affect the ratios for deaths in care homes and in hospitals. <!--Consideration of the weekly deaths ratio for the oldest age group may provide some additional insight - the latest ratio for deaths is `r round(nrs_agegroup_85$ratio_m,2)` (95% CI: `r round(nrs_agegroup_85$lci,2)`-`r round(nrs_agegroup_85$uci,2)`) for people aged 85 or more, suggesting the rate of death in this group is currently reducing.-->
 
 <!--The use of weekly ratios helps to smooth out variations occurring across week days, however they will still be affected by public holidays. For example, lower numbers of deaths were registered on Easter Monday (13th April) and on May day (4th May), with higher numbers registered on the following Tuesdays. This caused artificially low ratios to be obtained on the two Monday holidays and artificially high ratios on the Mondays of the following weeks (20th April and 11th May). We have illustrated the ratios that would have been obtained after adjustment to the number of deaths on affected dates in grey in Figures \@ref(fig:deathscaseshospicu) and \@ref(fig:ratiosnrshpsdaily). The adjusted number of deaths is calculated by apportioning the number of deaths reported on Mondays and Tuesdays of ‘holiday’ weeks to match the distribution of cases observed on Mondays and Tuesdays in ‘non-holiday’ weeks.-->
 
 <!--The ratios by place of death (Figure \@ref(fig:ratiosnrshpsloc)) will be subject to variations in hospital admission policy. For example, if a greater proportion of care home residents are being admitted to hospital then, under an unchanged admission policy, we might expect the weekly ratio for care homes to be higher than the last reported value of `r round(nrs_carehomes$ratio_m,2)` (95% CI: `r round(nrs_carehomes$lci,2)`-`r round(nrs_carehomes$uci,2)`), and the weekly ratio for hospitals to be lower than the reported value of `r round(nrs_hosp$ratio_m,2)` (95% CI: `r round(nrs_hosp$lci,2)`-`r round(nrs_hosp$uci,2)`) (data for week ending `r as.character(max(wk_gr_nps_nrs$date))`).-->
 
-The confidence intervals indicate the accuracy of the observed ratio of the two particular weeks considered. However, there are many factors which influence the ratios other than the true underlying rate of spread of COVID-19. Some of these will be systematic (as described in the above caveats) and others may be more random. The caveats should all be considered when interpreting the ratios, particularly when the confidence interval does not include 1. A modelling approach would be suggested to confirm whether the ratios have consistently fallen below 1 and to determine whether their values have stabilised. Note that while the ratios are related to the R number and values of less than (or greater than) 1 might be expected to correspond to R numbers of less than (or greater than) 1, their values will not be the same. Additionally this analogy is based on unchanged policies for testing and hospitalisation over the two week period used to calculate the ratio.
+The confidence intervals indicate the accuracy of the observed ratio of the two particular weeks considered. However, there are many factors which influence the ratios other than the true underlying rate of spread of COVID-19. Some of these will be systematic (as described in the above caveats) and others may be more random. The caveats should all be considered when interpreting the ratios, particularly when the confidence interval does not include 1. 
 
-\hfill \break
-\hfill \break
+
+There is some analogy between the ratios presented and the R number, and values of less than (or greater than 1) might be expected to correspond to R numbers of less than (or greater than 1). However, their values will not be identical and this analogy is based on unchanged policies for testing and hospitalisation over the two week period used to calculate each ratio. Furthermore it should be borne in mind that each statistic reflects a different manifestation of the virus, and none will adequately estimate true underlying rate of spread of infection in the full population. Death ratios are heavily influenced by the rate of spread to and within the older age group, and hence take less account of the rate of spread in the younger age group. Similarly cases and hospital in-patient ratios predominantly include those with more severe symptoms, and so do not capture the rate of infection spread within the whole population. Nevertheless these statistics are still helpful for determining the impact of the virus on health service requirements. A survey of the population would provide a more definitive estimate of the true underlying rate of spread of the virus.
+
+The use of weekly ratios helps to smooth out variations occurring across week days, however they will still be affected by public holidays. For example, a lower number of deaths were registered on 4th May (Spring bank holiday), followed by a higher number on Tuesday 5th May. This caused the ratio for Monday 4th May to be artificially low, the ratio the following Monday (11th May) to be artificially high, and that on the Monday two weeks later (18th May) to be artificially low. This was due to the separation of the (low and high) numbers for Monday 4th and Tuesday 5th May in the weeks used to calculate ratios for these dates. A similar pattern in the death numbers was noticed for 10th/11th April (Good Friday), 13th/14th April (Easter Monday) and 18th/19th May (Victoria Day), which would be expected to affect the holiday dates and two subsequent Mondays in the same way. Consideration will be given to making an adjustment to the ratios for affected dates in future reports.
+
+<!--A modelling approach would be suggested to confirm whether the ratios have consistently fallen below 1 and to determine whether their values have stabilised. Note that while the ratios are related to the R number and values of less than (or greater than) 1 might be expected to correspond to R numbers of less than (or greater than) 1, their values will not be the same. Additionally this analogy is based on unchanged policies for testing and hospitalisation over the two week period used to calculate the ratio.-->
 
 
 ```{r traj, fig.width=6, fig.height=5, fig.cap="Trajectories of COVID-19 cases and deaths vs respective cumulative numbers. Data source: HPS", eval = FALSE }
@@ -605,9 +603,7 @@ ggplot(cases_deaths) +
   theme(legend.position = c(0.20, 0.85))
 ```
 
-
-
-\newpage 
+\newpage
 
 ```{r dailydeathscases, fig.width=8, fig.height=5.4, fig.cap = "Daily cases and deaths and 7 day rolling sum"}
 
