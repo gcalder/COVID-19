@@ -18,7 +18,7 @@ Here is the daily report for COVID-19 in Scotland for `r weekdays(max(scot_data$
 
 
 **Deaths:**   
-The death toll is currently `r max(scot_deaths$deaths, na.rm = TRUE)`.   
+The death toll is currently `r comma(max(scot_deaths$deaths, na.rm = TRUE))`.   
 The number of new deaths reported today was `r scot_deaths$new_deaths[nrow(scot_deaths)]`, which represents a `r formatC(round(100*(scot_deaths$deaths[nrow(scot_deaths)]-scot_deaths$deaths[nrow(scot_deaths)-1])/scot_deaths$deaths[nrow(scot_deaths)-1],1), format='f', digits=1 )`% increase on yesterday's total.    
 The weekly ratio for new deaths measured over the last 7 days was `r formatC(round(wk_gr_newdeaths$ratio_m[nrow(wk_gr_newdeaths)],1), format='f', digits=1 )`. This is `r wk_gr_newdeaths$significance[nrow(wk_gr_newdeaths)]`. 
 
