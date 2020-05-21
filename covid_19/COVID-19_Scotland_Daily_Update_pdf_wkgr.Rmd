@@ -610,7 +610,7 @@ gridExtra::grid.arrange(fig1, fig2, fig4, fig3, nrow = 4)
 
 \newpage
 
-```{r, fig.width=6}
+```{r, fig.width=7, fig.height=6.5}
 p<-ggplot(wk_gr_newcases_hb) +
   aes(
     x = date, y = ratio,
