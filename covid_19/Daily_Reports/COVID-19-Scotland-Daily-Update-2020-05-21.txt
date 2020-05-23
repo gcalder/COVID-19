@@ -1,6 +1,6 @@
 <p>Here is the daily report for COVID-19 in Scotland for Thursday, 21 May 2020. For the full dashboard, including comparisons with other countries, please visit <a href="https://smazeri.shinyapps.io/Covid19_Scotland">here</a>.</p>
 <p><strong>Deaths:</strong><br />
-The death toll is currently 2221.<br />
+The death toll is currently 2,221.<br />
 The number of new deaths reported today was 37, which represents a 1.7% increase on yesterday’s total.<br />
 The weekly ratio for new deaths measured over the last 7 days was 0.9. This is not significantly less than 1.</p>
 <p><strong>Cases:</strong><br />
