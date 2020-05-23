@@ -4,6 +4,9 @@
 #df <- scot_data %>% select(new_cases, date) %>%
 #  mutate(outcome = new_cases)
 
+#df <- hb_cases %>% mutate(outcome = new_cases) %>%
+#filter(health_board == "NHS Orkney")
+      
 
 #weekly_ratios(df) %>% View()
 
@@ -49,7 +52,10 @@ return(left_join(df, df_long))
 significance_wk <- function(df){
   significant <- vector()
   for (i in 1:nrow(df)){
-    sig <- !inside.range(x =1, r = c(df$lci[i], df$uci[i]))
+    if (is.na(df$lci[i])|is.na(df$uci[i]))
+    sig <- NA
+    else (
+    sig <- !inside.range(x =1, r = c(df$lci[i], df$uci[i])))
     significant <- c(significant, sig)
   }
   df$significance <- paste(if_else(significant, "significantly", "not significantly"), df$comparison, 1, sep = " ")
