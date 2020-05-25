@@ -460,26 +460,28 @@ fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_blue) +
   geom_point(colour = nice_blue, size = 1) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+               limits = c(dmy("23-03-2020"), NA)) +
   scale_y_continuous(trans = "log10",
-                     limits = c(NA,7),
-                         expand = expansion(mult = 0.1)) +
+                         breaks = c(0.5, 1,3,6),
+                         #labels = c(0.5, 1,3,6),
+                         expand = expansion(mult = 0.1), limits = c(NA,7)) +
   labs( x = "End Date of Current Week",
         y = "Weekly Ratio",
         #title = "Change in weekly cases/deaths total as ratio of previous week",
         subtitle = "New Cases (Source: HPS)") +
   theme_bw(base_size = 10) +
-  theme(axis.title.y = element_text(margin = margin(t = 0, r = 14, b = 0, l = 0)))
+  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm"))
 
 fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & 
-                    !is.infinite(ratio) & date >= max(wk_gr_newcases$date)-6)) +
+                    !is.infinite(ratio) & date >= max(wk_gr_newcases$date)-20)) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_blue) +
   geom_point(colour = nice_blue, size = 1) +
-  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "10 days", labels = date_format("%b %d")) +
   scale_y_continuous(trans = "log10") +
   labs( x = "", y = "") +
   theme_bw(base_size = 8) +
@@ -487,74 +489,87 @@ fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) &
 
 fig1 <- ggdraw() +
   draw_plot(fig1) +
-  draw_plot(fig1_inset, x = 0.57, y = .53, width = .40, height = .3)
+  draw_plot(fig1_inset, x = 0.51, y = .55, width = .44, height = .29)
 
-fig2 <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
-              !is.infinite(ratio) & date >= dmy("23-03-2020"))) +
+
+fig2 <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & date >= dmy("23-03-2020"))) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_red, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_red) +
   geom_point(colour = nice_red, size = 1) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+               limits = c(dmy("23-03-2020"), NA)) +
   scale_y_continuous(trans = "log10",
-                         #breaks = breaks,
-                         expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+                         expand = expansion(mult = 0.1),
+                     breaks = c(0.5, 1,3,10,30),
+                     #labels = c(0.5, 1,3,10,30)
+                     ) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+               limits = c(dmy("23-03-2020"), NA)) +
+  scale_colour_manual(values = c("grey50", nice_red)) +
+  scale_fill_manual(values = c("grey50", nice_red)) +
   labs( x = "End Date of Current Week",
         y = "Weekly Ratio",
         subtitle = "New Deaths (Source: HPS)") +
-  theme_bw(base_size = 10)
+  theme_bw(base_size = 10) + 
+  theme(plot.margin = unit(c(0.2,0.5,0.2,0.2), "cm"), 
+        legend.position = "none")
 
-fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & 
-                    !is.infinite(ratio) & date >= max(wk_gr_newdeaths$date)-6)) +
+fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) & date >= max(wk_gr_newdeaths$date)-20)) +
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci) +
   geom_errorbar(width = 0, colour = nice_red, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_red) +
   geom_point(colour = nice_red, size = 1) +
-  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"),expand = expansion(mult = 0.1)) +
-  scale_y_continuous(trans = "log10") +
+  scale_x_date(date_breaks = "10 days", labels = date_format("%b %d")#,expand = expansion(mult = 0.1)
+               ) +
+  scale_colour_manual(values = c("grey50", nice_red)) +
+  scale_fill_manual(values = c("grey50", nice_red)) +
+    scale_y_continuous(trans = "log10") +
   labs( x = "",
         y = "") +
   theme_bw(base_size = 8) +
-  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
+  theme(plot.margin = margin(0, 0, -1, 0, "cm"), 
+        legend.position = "none")
+
 
 fig2 <- ggdraw() +
   draw_plot(fig2) +
-  draw_plot(fig2_inset, x = 0.57, y = .53, width = .40, height = .3)
+  draw_plot(fig2_inset, x = 0.51, y = .54, width = .44, height = .3)
 
 
-fig3 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
+fig3 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
               !is.infinite(ratio_m) & date >= dmy("23-03-2020"))) +
   aes(x = date, y = ratio_m,
     ymin = lci, ymax = uci) +
-  geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(colour = nice_orange) +
-  geom_point(colour = nice_orange, size = 1) +
+  geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.1) +
+  geom_line(colour = nice_green) +
+  geom_point(colour = nice_green, size = 1) +
   scale_y_continuous(trans = "log10",
-                         #breaks = breaks,
-                         expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+                     breaks = c(0.8, 1,2, 3),
+                     #labels = c(0.8, 1,2, 3),
+                     expand = expansion(mult = 0.1)) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+               limits = c(dmy("23-03-2020"), NA)) +
   labs( x = "Current Date",
         y = "Day-Of-The-Week Ratio",
-        subtitle = "ICU Occupancy (Source: NHS Boards)") +
-  theme_bw(base_size = 10) +
-  theme(axis.title.y = element_text(margin = margin(t = 0, r = 7, b = 0, l = 0)))
+        subtitle = "Patients in Hospital (Source: NHS Boards)") +
+  theme_bw(base_size = 10)  + 
+  theme(plot.margin = unit(c(0.2,0.4,0.2,0.3), "cm"))
 
-
-
-fig3_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
-                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_icu$date)-6)) +
+fig3_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
+                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_hosp$date)-20)) +
   aes(x = date, y = ratio_m,
     ymin = lci, ymax = uci) +
-  geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
+  geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(colour = nice_orange) +
-  geom_point(colour = nice_orange, size = 1) +
-  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  geom_line(colour = nice_green) +
+  geom_point(colour = nice_green, size = 1) +
+  scale_x_date(date_breaks = "10 days", labels = date_format("%b %d")) +
   scale_y_continuous(trans = "log10") +
   labs( x = "",
         y = "") +
@@ -563,36 +578,39 @@ fig3_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) &
 
 fig3 <- ggdraw() +
   draw_plot(fig3) +
-  draw_plot(fig3_inset, x = 0.57, y = .53, width = .40, height = .3)
+  draw_plot(fig3_inset, x = 0.51, y = .54, width = .44, height = .3)
 
-fig4 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
+fig4 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
               !is.infinite(ratio_m) & date >= dmy("23-03-2020"))) +
   aes(x = date, y = ratio_m,
     ymin = lci, ymax = uci) +
-  geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
+  geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(colour = nice_green) +
-  geom_point(colour = nice_green, size = 1) +
+  geom_line(colour = nice_orange) +
+  geom_point(colour = nice_orange, size = 1) +
   scale_y_continuous(trans = "log10",
-                         #breaks = breaks,
+                         breaks = c(0.5, 1, 3, 10),
+                         #labels = c(0.5, 1, 3, 10),
                          expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+               limits = c(dmy("23-03-2020"), NA)) +
   labs( x = "Current Date",
         y = "Day-Of-The-Week Ratio",
-        subtitle = "Hospital Occupancy (Source: NHS Boards)") +
-  theme_bw(base_size = 10) +
-  theme(axis.title.y = element_text(margin = margin(t = 0, r = 14, b = 0, l = 0)))
+        subtitle = "Patients in ICU (Source: NHS Boards)") +
+  theme_bw(base_size = 10)  + 
+  theme(plot.margin = unit(c(0.2,0.4,0.2,0.3), "cm"))
 
 
-fig4_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
-                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_hosp$date)-6)) +
+
+fig4_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
+                    !is.infinite(ratio_m) & date >= max(wk_gr_hosp_icu$date)-20)) +
   aes(x = date, y = ratio_m,
     ymin = lci, ymax = uci) +
-  geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
+  geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(colour = nice_green) +
-  geom_point(colour = nice_green, size = 1) +
-  scale_x_date(date_breaks = "4 days", labels = date_format("%b %d"), expand = expansion(mult = 0.1)) +
+  geom_line(colour = nice_orange) +
+  geom_point(colour = nice_orange, size = 1) +
+  scale_x_date(date_breaks = "10 days", labels = date_format("%b %d")) +
   scale_y_continuous(trans = "log10") +
   labs( x = "",
         y = "") +
@@ -601,9 +619,10 @@ fig4_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) &
 
 fig4 <- ggdraw() +
   draw_plot(fig4) +
-  draw_plot(fig4_inset, x = 0.57, y = 0.53, width = 0.40, height = 0.3)
+  draw_plot(fig4_inset, x = 0.51, y = .54, width = .44, height = .3)
 
-gridExtra::grid.arrange(fig1, fig2, fig4, fig3, nrow = 4) 
+
+gridExtra::grid.arrange(fig1, fig2, fig3, fig4, nrow = 4) 
 ```
 
 
