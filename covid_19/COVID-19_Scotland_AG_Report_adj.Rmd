@@ -138,7 +138,7 @@ wk_gr_hosp_hosp <- data_hosp %>%
 wk_gr_hosp_hosp_latest <- filter(wk_gr_hosp_hosp, date == max(wk_gr_hosp_icu$date))
 
 # Import NRS data
-myurl_deaths <- "https://www.nrscotland.gov.uk/files//statistics/covid19/covid-deaths-data-week-20.xlsx"
+myurl_deaths <- "https://www.nrscotland.gov.uk/files//statistics/covid19/covid-deaths-data-week-21.xlsx"
 GET(myurl_deaths, write_disk(tmp <- tempfile(fileext = ".xlsx")))
 GET(myurl_deaths, write_disk("nrs.xlsx", overwrite = TRUE))
 
@@ -146,7 +146,7 @@ GET(myurl_deaths, write_disk("nrs.xlsx", overwrite = TRUE))
 nrs_deaths_covid_raw <- read_excel(tmp, sheet = "Table 1 - COVID deaths", skip = 3) %>%
   select(-`Year to Date`) %>%
   rename("Details" = "...2",
-         "Total" = "...24")
+         "Total" = "...25")
 
 nrs_deaths_covid <- nrs_deaths_covid_raw %>% filter(`Week beginning` == "Deaths involving COVID-194") %>%
   pivot_longer(cols = `43829`:names(nrs_deaths_covid_raw)[ncol(nrs_deaths_covid_raw)-1],
@@ -200,7 +200,7 @@ nrs_deaths_covid_raw_daily <- left_join(nrs_deaths_covid_raw_daily, nrs_deaths_c
 
 # Import Scottish covid data
 #path <- "COVID-19_Scotland_data_all_2020-04-10.xlsx" 
-path <- paste0("Daily_Reports/COVID-19_Scotland_data_all_", {Sys.Date()-1}, ".xlsx") 
+path <- paste0("Daily_Reports/COVID-19_Scotland_data_all_", {Sys.Date()}, ".xlsx") 
 # Scottish cases data
 scot_data_raw <- read_excel(path, sheet = "Cases By Health Board", skip = 1)
 scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrease")) %>%
@@ -513,10 +513,10 @@ Numbers of new cases and new deaths, as reported by Health Protection Scotland (
 
 We use publically available data on the daily numbers of cases, deaths, and the numbers of patients in hospital and in ICU units to form our indicators. The cumulative number of cases and deaths has been reported each day since the start of the pandemic in Scotland by Health Protection Scotland (HPS). The deaths include those which have been registered with the National Records of Scotland (NRS) where a laboratory confirmed report of COVID-19 in the 28 days prior to death exists. Thus these numbers are expected to capture the majority of deaths occurring in hospitals, but a lower proportion of those in care homes and the community. The NRS additionally provide a weekly report of all deaths where COVID-19 is mentioned on the death certificate (not just those confirmed by a test as provided by HPS). 
 
-The number of COVID-19 patients in hospital and intensive care units (ICUs) is reported by NHS boards on a daily basis. This report includes all patients with COVID-19 who are registered as being in hospital (or ICU) at midnight each day (Figure \@ref(fig:dailyoccupancy)). Both confirmed and suspected patients are included in the ICU numbers, but only confirmed patients are included for the total hospital in-patients. Reports issued before 25th May included both suspected and confirmed cases in the hospital in-patient total, but suspected cases have now been excluded as they were subject to unexplained fluctuations.
+The number of COVID-19 patients in hospital and intensive care units (ICUs) is reported by NHS boards on a daily basis. This report includes all patients with COVID-19 who are registered as being in hospital (or ICU) at midnight each day (Figure \@ref(fig:dailyoccupancy)). Both confirmed and suspected patients are included in the ICU numbers, but only confirmed patients are included in total hospital in-patient numbers (in reports from 25th May).
 
 \subsection*{Weekly comparisons}
-We have used ratios of both cases and deaths in the past week compared to the previous week (i.e. the total over the 7 days as a ratio of the total over the previous 7 days) to monitor the weekly rate of spread of COVID-19 (Figures \@ref(fig:deathscaseshospicu), \@ref(fig:ratiosnrshpsloc), \@ref(fig:ratiosnrshpsdaily) and Table \@ref(tab:tabdeathscaseshospicu)). Weekly totals are considered as they are less prone to week day variations than the daily values (see Caveats below).
+We have used ratios of both cases and deaths in the past week compared to the previous week (i.e. the total over the last 7 days as a ratio of the total over the previous 7 days) to monitor the weekly rate of spread of COVID-19 (Figures \@ref(fig:deathscaseshospicu), \@ref(fig:ratiosnrshpsloc), \@ref(fig:ratiosnrshpsdaily) and Table \@ref(tab:tabdeathscaseshospicu)). Weekly totals are considered as they are less prone to week day variations than the daily values (see Caveats below).
 
 Ratios for patients in hospital are calculated as the number of patients in hospital (or ICU) on a given day compared to the number of patients in hospital (or ICU) one week before (e.g. the ratio for `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()))` is ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()))`’ divided by ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-7))`’).
 
@@ -582,7 +582,7 @@ filter(date == max(wk_gr_nps_nrs$date)) %>%
 latest_nrs_hps_date <- format(max(wk_gr_nps_nrs$date), '%d/%m/%Y')
 ```
 
-Death numbers reported by HPS include individuals who have positive tests but are not in hospital. Increased testing in the community (particularly in care homes) will cause more deaths to be counted and make HPS death numbers difficult to compare over time. The NRS death numbers are expected to provide a more consistent comparison, and also to allow care home and other non-hospital deaths to be considered separately. However, these data are only issued on a weekly basis and they will be less up-to-date than the data from HPS. The latest weekly ratio for NRS deaths, `r filter(latest_nrs_hps, Location == "NRS")$ratio_m` (95% CI `r filter(latest_nrs_hps, Location == "NRS")$lci`-`r filter(latest_nrs_hps, Location == "NRS")$uci`), is lower than the equivalent value for HPS deaths `r filter(latest_nrs_hps, Location == "HPS")$ratio_m` (95% CI `r filter(latest_nrs_hps, Location == "HPS")$lci`-`r filter(latest_nrs_hps, Location == "HPS")$uci`) and might be expected to provide a more accurate reflection of the underlying state of the epidemic (based on NRS data up to `r latest_nrs_hps_date`; Figures \@ref(fig:ratiosnrshpsloc) and \@ref(fig:ratiosnrshpsdaily)).
+Death numbers reported by HPS include individuals who have positive tests but are not in hospital. Increased testing in the community (particularly in care homes) will cause more deaths to be counted and make HPS death numbers difficult to compare over time. The NRS death numbers are expected to provide a more consistent comparison, and also to allow care home and other non-hospital deaths to be considered separately. However, these data are only issued on a weekly basis and they will be less up-to-date than the data from HPS (Figures \@ref(fig:ratiosnrshpsloc) and \@ref(fig:ratiosnrshpsdaily)). <!--The latest weekly ratio for NRS deaths, `r filter(latest_nrs_hps, Location == "NRS")$ratio_m` (95% CI `r filter(latest_nrs_hps, Location == "NRS")$lci`-`r filter(latest_nrs_hps, Location == "NRS")$uci`), is lower than the equivalent value for HPS deaths `r filter(latest_nrs_hps, Location == "HPS")$ratio_m` (95% CI `r filter(latest_nrs_hps, Location == "HPS")$lci`-`r filter(latest_nrs_hps, Location == "HPS")$uci`) and might be expected to provide a more accurate reflection of the underlying state of the epidemic (based on NRS data up to `r latest_nrs_hps_date`; Figures \@ref(fig:ratiosnrshpsloc) and \@ref(fig:ratiosnrshpsdaily)).-->
 
 ```{r}
 nrs_hosp <- filter(wk_gr_nps_nrs, Location =="Hospital" & date == max(wk_gr_nps_nrs$date))
@@ -596,7 +596,7 @@ The use of weekly ratios helps to smooth out variations occurring across week da
 
 The confidence intervals indicate the accuracy of the observed ratio of the two particular weeks considered. However, there are many factors which influence the ratios other than the true underlying rate of spread of COVID-19. Some of these will be systematic (as described in the above caveats) and others may be more random. The caveats should all be considered when interpreting the ratios, particularly when the confidence interval does not include 1. 
 
-There is some analogy between the ratios presented and the R number, and values of less than 1 (or greater than 1) might be expected to correspond to R numbers of less than (or greater than) 1. However, their values will not be identical and this analogy is based on unchanged policies for testing and hospitalisation over the two week period used to calculate each ratio. Furthermore it should be borne in mind that each statistic reflects a different manifestation of the virus, and none will be fully representative of the true underlying rate of spread of infection in the full population. Death ratios are heavily influenced by the rate of spread to and within older age groups, and take less account of the rate of spread in younger age groups. Similarly cases and hospital in-patients predominantly include those with more severe symptoms, and so do not fully capture the rate of infection spread within the whole population. Nevertheless these statistics have clear value for monitoring the impact of the virus on health service requirements, and will still serve as broad indicators of the underlying rate of spread of the virus. An ongoing survey of the population would be needed to provide more definitive estimates of this rate.
+There is some analogy between the ratios presented and the R number, and values of less than 1 (or greater than 1) might be expected to correspond to R numbers of less than (or greater than) 1. While their values will not be identical, a rudimentary conversion based on a serial interval of 6.48 days (as used in the ICL model) indicates they would be similar. For example, a ratio of 0.70 would correspond to R=0.72, a ratio of 0.80 to R=0.813, and a ratio of 0.90 to R=0.91 (R=Ratio\textsuperscript{(6.48/7)}). However, this analogy assumes uniform reporting over the two week period used to calculate each ratio. Furthermore it should be borne in mind that each statistic reflects a different manifestation of the virus, and none are fully representative of the true underlying rate of spread of infection in the whole population. Death ratios are heavily influenced by the rate of spread to and within older age groups, and take less account of the rate of spread in younger age groups. Similarly cases and hospital in-patients predominantly include those with more severe symptoms, and so do not fully capture the rate of infection spread within the whole population. Nevertheless these statistics have clear value for monitoring the impact of the virus on health service requirements, and will still serve as broad indicators of the underlying rate of spread of the virus occurring 3-4 weeks earlier. An ongoing survey of the population would be needed to provide more definitive and up-to-date estimates of this rate and the underlying R value.
 
 <!--A modelling approach would be suggested to confirm whether the ratios have consistently fallen below 1 and to determine whether their values have stabilised. Note that while the ratios are related to the R number and values of less than (or greater than) 1 might be expected to correspond to R numbers of less than (or greater than) 1, their values will not be the same. Additionally this analogy is based on unchanged policies for testing and hospitalisation over the two week period used to calculate the ratio.-->
 
@@ -1322,10 +1322,10 @@ fig1<- ggplot(wk_gr_newdeaths_nrs_hps %>% filter(!is.na(ratio) & date >= dmy("23
   geom_errorbar(width = 0, alpha = 0.4, position=position_dodge(width=0.3)) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.3) +
   geom_line(position=position_dodge(width=0.3)) +
-  geom_point(size = 1, position=position_dodge(width=0.3)) +
-  geom_point(data = hps_adj, aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
+  geom_point(size = 0.6, position=position_dodge(width=0.3)) +
+  geom_point(data = hps_adj, size = 0.6, aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
   geom_line(data = hps_adj, aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
-  geom_point(data = nrs_adj, aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
+  geom_point(data = nrs_adj, size = 0.6, aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
   geom_line(data = nrs_adj, aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
   scale_y_continuous(trans = "log10",
                          labels = scales::comma_format(accuracy = 1),
@@ -1345,9 +1345,9 @@ fig1_inset <- ggplot(wk_gr_newdeaths_nrs_hps %>% filter(!is.na(ratio) &
   aes(x = date, y = ratio,
     ymin = lci, ymax = uci,
     colour = source, fill = source) +
-  geom_point(data = hps_adj %>% filter(date >= max(wk_gr_newdeaths_nrs_hps$date)-20), aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
+  geom_point(data = hps_adj %>% filter(date >= max(wk_gr_newdeaths_nrs_hps$date)-20), aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE, size = 1) +
   geom_line(data = hps_adj %>% filter(date >= max(wk_gr_newdeaths_nrs_hps$date)-20), aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
-  geom_point(data = nrs_adj %>% filter(date >= max(wk_gr_newdeaths_nrs_hps$date)-20), aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
+  geom_point(data = nrs_adj %>% filter(date >= max(wk_gr_newdeaths_nrs_hps$date)-20), aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE, size = 1) +
   geom_line(data = nrs_adj %>% filter(date >= max(wk_gr_newdeaths_nrs_hps$date)-20), aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
   geom_errorbar(width = 0, alpha = 0.4, position=position_dodge(width=0.2)) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
