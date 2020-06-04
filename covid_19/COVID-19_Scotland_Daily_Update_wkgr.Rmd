@@ -836,9 +836,8 @@ p<-ggplot(wk_gr_newcases_hb) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line() +
   geom_point(aes(shape = symbol), size = 2) +
-  scale_y_continuous(trans = "log10",
-                         labels = scales::comma_format(accuracy = 1),
-                         #breaks = breaks,
+  scale_y_continuous(trans = "pseudo_log",
+                         breaks = c(0.5,1,2, 5, 10, 20),
                          expand = expansion(mult = 0.1)) +
   scale_color_manual(values = c('#e6194b', '#ffe119', '#4363d8','#800000', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#008080', '#9a6324',  '#808000', '#ffd8b1', '#000075', '#808080'))+
   scale_fill_manual(values = c('#e6194b', '#ffe119', '#4363d8','#800000', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#008080', '#9a6324',  '#808000', '#ffd8b1', '#000075', '#808080'))+
