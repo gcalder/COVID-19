@@ -23,18 +23,18 @@ Here is the daily report for COVID-19 in Scotland for `r weekdays(max(scot_data$
 
 **Deaths:** <br/>
 The death toll is currently `r comma(max(scot_deaths$deaths, na.rm = TRUE))`.   
-The number of new deaths reported today was `r scot_deaths$new_deaths[nrow(scot_deaths)]`, which represents a `r formatC(round(100*(scot_deaths$deaths[nrow(scot_deaths)]-scot_deaths$deaths[nrow(scot_deaths)-1])/scot_deaths$deaths[nrow(scot_deaths)-1],1), format='f', digits=1 )`% increase on yesterday's total. <br/> 
-The weekly ratio for new deaths measured over the last 7 days was `r formatC(round(wk_gr_newdeaths$ratio_m[nrow(wk_gr_newdeaths)],1), format='f', digits=1 )`. This is `r wk_gr_newdeaths$significance[nrow(wk_gr_newdeaths)]`.    
+The number of new deaths reported today was `r scot_deaths$new_deaths[nrow(scot_deaths)]`, which represents a `r formatC(100*(scot_deaths$deaths[nrow(scot_deaths)]-scot_deaths$deaths[nrow(scot_deaths)-1])/scot_deaths$deaths[nrow(scot_deaths)-1], format='f', digits=2 )`% increase on yesterday's total. <br/> 
+The weekly ratio for new deaths measured over the last 7 days was `r formatC(wk_gr_newdeaths$ratio_m[nrow(wk_gr_newdeaths)], format='f', digits=2 )`. This is `r wk_gr_newdeaths$significance[nrow(wk_gr_newdeaths)]`.    
 
 **Cases:** <br/>
 The total number of cases is currently `r comma(scot_data$confirmed_cases[nrow(scot_data)])`.    
-The number of new cases today is `r scot_data$new_cases[nrow(scot_data)]`, which represents a `r formatC(round(100*(scot_data$confirmed_cases[nrow(scot_data)]-scot_data$confirmed_cases[nrow(scot_data)-1])/scot_data$confirmed_cases[nrow(scot_data)-1],1), format='f', digits=1 )`% increase on yesterday's total. <br/> 
-The weekly ratio for new cases measured over the last 7 days was `r formatC(round(wk_gr_newcases$ratio_m[nrow(wk_gr_newcases)],1), format='f', digits=1 )`. This is `r wk_gr_newcases$significance[nrow(wk_gr_newcases)]`.  
+The number of new cases today is `r scot_data$new_cases[nrow(scot_data)]`, which represents a `r formatC(100*(scot_data$confirmed_cases[nrow(scot_data)]-scot_data$confirmed_cases[nrow(scot_data)-1])/scot_data$confirmed_cases[nrow(scot_data)-1], format='f', digits=2 )`% increase on yesterday's total. <br/> 
+The weekly ratio for new cases measured over the last 7 days was `r formatC(wk_gr_newcases$ratio_m[nrow(wk_gr_newcases)], format='f', digits=2 )`. This is `r wk_gr_newcases$significance[nrow(wk_gr_newcases)]`.  
 
 **Hospital and ICU Occupancy** <br/>
 The number of patients in hospital with confirmed or suspected COVID-19 as of midnight is `r comma(filter(data_hosp, date == max(data_hosp$date))$Hospital_total)`, of whom `r filter(data_hosp, date == max(data_hosp$date))$ICU_total` are in ICU.<br/>
-The day-of-the-week ratio for hospital occupancy `r formatC(round(wk_gr_hosp_hosp_latest$ratio_m,1), format='f', digits=1 )`. This is `r wk_gr_hosp_hosp_latest$significance`. <br/>
-The day-of-the-week ratio for ICU occupancy is `r formatC(round(wk_gr_hosp_icu_latest$ratio_m,1), format='f', digits=1 )`. This is `r wk_gr_hosp_icu_latest$significance`.
+The day-of-the-week ratio for hospital occupancy `r formatC(wk_gr_hosp_hosp_latest$ratio_m, format='f', digits=2 )`. This is `r wk_gr_hosp_hosp_latest$significance`. <br/>
+The day-of-the-week ratio for ICU occupancy is `r formatC(wk_gr_hosp_icu_latest$ratio_m, format='f', digits=2 )`. This is `r wk_gr_hosp_icu_latest$significance`.
 
 ```{r}
 data_incidence <- scot_data_health_board %>%
@@ -54,18 +54,18 @@ data_growth_rates_today <- subset(wk_gr_newcases_hb, date == max(wk_gr_newcases_
 
 
 **Cases per capita (measured per 10,000 head of population):** <br/>
-The highest incidence over the last day was `r formatC(round(max(scot_ti_hb$today_incidence),1), format='f', digits=1 )`, which occurred in `r subset(scot_ti_hb, today_incidence == max(scot_ti_hb$today_incidence))$health_board`. <br/>
-The highest cumulative incidence is `r formatC(round(max(scot_ci_hb$cumulative_incidence),1), format='f', digits=1 )`, which is in `r subset(scot_ci_hb, cumulative_incidence == max(scot_ci_hb$cumulative_incidence))$health_board`.
+The highest incidence over the last day was `r formatC(max(scot_ti_hb$today_incidence), format='f', digits=2 )`, which occurred in `r subset(scot_ti_hb, today_incidence == max(scot_ti_hb$today_incidence))$health_board`. <br/>
+The highest cumulative incidence is `r formatC(max(scot_ci_hb$cumulative_incidence), format='f', digits=2 )`, which is in `r subset(scot_ci_hb, cumulative_incidence == max(scot_ci_hb$cumulative_incidence))$health_board`.
 
 **Health Boards\*:** <br/>
 The largest increase in cases in absolute terms by health board was `r max(data_incidence_today$new_cases)` cases, which occurred in `r subset(data_incidence_today, new_cases == max(data_incidence_today$new_cases))$health_board`.<br/> 
-The largest relative increase in cases was `r formatC(round(max(data_incidence_today$relative_increase_cases),1),format='f', digits=1)`%, which occurred in `r subset(data_incidence_today, relative_increase_cases == max(data_incidence_today$relative_increase_cases))$health_board`. <br/> 
-The highest weekly ratio for new cases was `r formatC(round(data_growth_rates_today$ratio_m,1), format='f', digits=1)`, which occurred in `r data_growth_rates_today$health_board`. `r data_growth_rates_today$sign_ci`.
+The largest relative increase in cases was `r formatC(max(data_incidence_today$relative_increase_cases),format='f', digits=2)`%, which occurred in `r subset(data_incidence_today, relative_increase_cases == max(data_incidence_today$relative_increase_cases))$health_board`. <br/> 
+The highest weekly ratio for new cases was `r formatC(data_growth_rates_today$ratio_m, format='f', digits=2)`, which occurred in `r data_growth_rates_today$health_board`. `r data_growth_rates_today$sign_ci`.
 
 **Tests:** <br/>
 The total number of tests reported is `r comma(scot_tests$Conducted[nrow(scot_tests)])`. <br/>
 The total number of positive cases to date is `r comma(scot_tests[nrow(scot_tests),"Total Positive"][[1]])`. <br/>
-The percentage of tests which were positive is currently `r formatC(round(100*scot_tests[nrow(scot_tests),"Total Positive"]/scot_tests$Conducted[nrow(scot_tests)],1)[[1]],format='f', digits=1 )`%.
+The percentage of tests which were positive is currently `r formatC(round(100*scot_tests[nrow(scot_tests),"Total Positive"]/scot_tests$Conducted[nrow(scot_tests)],4)[[1]],format='f', digits=2 )`%.
 
 <br> 
 
