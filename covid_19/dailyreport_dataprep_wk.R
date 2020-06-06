@@ -159,8 +159,10 @@ data_hosp <- data_hosp %>%
          "Hospital_suspected" = "Suspected...6",
          "Hospital_total" = "Total...7" ) %>%
   filter(!is.na(ICU_total)) %>%
-  #mutate(date = as.Date(as.numeric(date), origin = "1899-12-30")) %>%
   mutate(date = lubridate::ymd(date)) %>%
+  mutate(date = case_when(date == ymd("2020-06-05") & Hospital_total == 1019 ~ ymd("2020-06-06"),
+                            TRUE ~ ymd(date))) %>%
+  #mutate(date = as.Date(as.numeric(date), origin = "1899-12-30")) %>%
   mutate(ICU_confsusp = case_when(is.na(ICU_confirmed) & is.na(ICU_suspected) ~ ICU_total)) %>%
   mutate(Hospital_confsusp = case_when(is.na(Hospital_confirmed) & is.na(Hospital_suspected) ~ Hospital_total)) %>%
   select(date, contains("ICU"), everything()) %>%
