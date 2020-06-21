@@ -34,6 +34,6 @@ rmarkdown::pandoc_convert(input = str_glue("COVID-19-Scotland-Daily-Update-", {s
 #Delete useless files
 file.remove(file_name_word)
 unlink("COVID-19-Scotland-Daily-Update-word", recursive = TRUE)
-
+  
 
 

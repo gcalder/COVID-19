@@ -28,6 +28,19 @@ In the interests of security, specific details of how both reports are distribut
 
   1) Make sure that the raw data from HPS are in place (step 1 above)
   2) Run the 'COVID-19_Scotland_AG_Report.Rmd' R script
+  
+## Dependencies 
+List of packages that need to be installed for code to run.
+
+*Python*
+
+`conda install pandas numpy bs4 lxml openpyxl xlsxwriter`
+
+*R*
+
+`install.packages(c("flexdashboard","shiny","readr","dplyr","tidyr","purrr","forcats","stringr","htmlwidgets","lubridate","sf","RcppRoll","plotly","leaflet","shinythemes","classInt","ggrepel","scales","leaflet.extras","RColorBrewer","cowplot","httr","spatstat.utils","tinytex"))`
+  
+`remotes::install_github("clauswilke/colorblindr")`
 
 ## Contributing
 * To contribute, please create a branch and submit a pull request to master. Please do not push directly to master.
