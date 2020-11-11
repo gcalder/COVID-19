@@ -6,6 +6,11 @@
 *.DS_Store
 *.html
 *.json
+covid_19/*.pdf
+covid_19/*.png
+covid_19/*.docx
+covid_19/*.xlsx
+covid_19/*.html
 .Rproj.user
 .Rproj.user/**
 .Rhistory
