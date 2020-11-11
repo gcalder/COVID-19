@@ -76,6 +76,7 @@ data_hosp <- data_hosp %>%
              mutate(date = ymd(`Reporting Date`)) %>%
              rename(ICU_total = `(i) COVID-19 patients in ICU\r\n or combined ICU/HDU`,
                     Hospital_total = `(ii) COVID-19 patients in hospital (including those in ICU)`) %>%
+  filter(date < Sys.Date()) %>% #remove today's data
   mutate(date = date - days(1))
 
 data_hosp_old <- data_hosp_old %>%
@@ -83,6 +84,7 @@ data_hosp_old <- data_hosp_old %>%
          Hospital_total = `Confirmed...5`) %>%
   mutate(date = ymd(`...1`)) %>%
   select(ICU_total, Hospital_total, date) %>%
+  filter(date < Sys.Date()) %>% #remove today's data
   mutate(date = date - days(1)) %>%
   filter(date < min(data_hosp$date))
 
@@ -313,7 +315,9 @@ scot_tests <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
   mutate(date = lubridate::ymd(Date)) %>%
   mutate(positive_perc = 100*new_cases/new_people_tested) %>%
   select(-Date) %>%
-  select(date, new_cases, new_people_tested, total_people_tested, positive_perc) 
+  select(date, new_cases, new_people_tested, total_people_tested, positive_perc) %>%
+  filter(date < Sys.Date()) %>% #remove today's data
+  mutate(date = date - days(1))
 
 
 scot_data <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
@@ -324,6 +328,7 @@ scot_data <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
   mutate(date = lubridate::ymd(Date)) %>%
   select(-Date) %>%
   select(date, new_cases, confirmed_cases) %>%
+  filter(date < Sys.Date()) %>% #remove today's data
   mutate(date = date - days(1))
 
 # PHS cases adjust bank holiday effect
@@ -371,6 +376,7 @@ scot_deaths <- data_deaths %>%
   mutate(new_deaths = c(1,diff(deaths, 1)))
 
 scot_deaths <- scot_deaths %>%
+  filter(date < Sys.Date()) %>% #remove today's data
   mutate(date = date - days(1))
 
 
@@ -623,14 +629,44 @@ wk_gr_nps_nrs <- wk_gr_nps_nrs %>%
                                              TRUE ~ Location))
 
 
+# Import Age group data
+data_agr <- read_csv("https://www.opendata.nhs.scot/dataset/b318bddf-a4dc-4262-971f-0ba329e09b87/resource/9393bd66-5012-4f01-9bc5-e7a10accacf4/download/trend_agesex_20201105.csv")
+
+data_agr_total <- data_agr %>%
+  filter(Sex == "Total" & AgeGroup != "Total") %>%
+  mutate(date = lubridate::ymd(Date)) %>%
+  select(-Date) %>%
+  rename("new_cases" = "DailyPositive", 
+         "confirmed_cases" = "CumulativePositive",
+         "new_deaths" = "DailyDeaths",
+         "deaths" = "CumulativeDeaths") %>%
+  filter(date < (Sys.Date()-days(1))) #remove today's data
+
+# data_agr_total %>%
+#   group_by(date) %>%
+#   summarise(total_new = sum(new_cases)) %>%
+#   arrange(desc(date)) %>%
+#   slice(1:60) %>% View()
+
+wk_gr_newcases_agr <- data_agr_total %>% rename("outcome" = new_cases) %>%
+  arrange(date) %>%
+  group_by(AgeGroup) %>%
+  nest() %>%
+  mutate(gr = map(data, ~weekly_ratios(.x))) %>%
+  unnest(gr) %>%
+  filter(date >= ymd("2020-03-23")) %>%
+  filter(!is.na(ratio) & !is.infinite(ratio))  %>%
+  significance_wk() 
+
+
 # Import CA data
 data_ca <- read_csv("https://www.opendata.nhs.scot/dataset/b318bddf-a4dc-4262-971f-0ba329e09b87/resource/427f9a25-db22-4014-a3bc-893b68243055/download/trend_ca_20201027.csv")
 
-#ca_map <- sf::read_sf("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/infuse_dist_lyr_2011/infuse_dist_lyr_2011.shp")
-#ca_map$geo_label <- recode(ca_map$geo_label, "Edinburgh, City of" = "City of Edinburgh", 
-#                                             "Eilean Siar" =   "Na h-Eileanan Siar")
-#ca_map <- filter(ca_map, geo_label %in% unique(data_ca$CAName))
-#ca_map_simp <- st_simplify(ca_map, preserveTopology = TRUE, dTolerance = 1000)
+ca_map <- sf::read_sf("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/infuse_dist_lyr_2011/infuse_dist_lyr_2011.shp")
+geo_label <- recode(ca_map$geo_label, "Edinburgh, City of" = "City of Edinburgh", 
+                                             "Eilean Siar" =   "Na h-Eileanan Siar")
+ca_map <- filter(ca_map, geo_label %in% unique(data_ca$CAName))
+ca_map_simp <- st_simplify(ca_map, preserveTopology = TRUE, dTolerance = 1000)
 
 ca_pop <- read_csv("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/council-area-profiles-dataset-with-copyright/council-area-profiles-dataset-with-copyright_population-estimates.csv") %>%
   filter(Year == 2019)
@@ -656,7 +692,8 @@ data_ca <- data_ca %>%
   left_join(ca_pop, by = c("CAName" = "Council area")) %>%
   mutate(CAName = factor(CAName, levels = ca2hb$CA)) %>%
   mutate(new_cases_pop_100000 = 100000*new_cases/Pop,
-         new_deaths_pop_100000 = 100000*new_deaths/Pop)
+         new_deaths_pop_100000 = 100000*new_deaths/Pop) %>%
+  filter(date < (Sys.Date()-days(1)))  #remove today's data
 
 wk_gr_newcases_ca <- data_ca %>% rename("outcome" = new_cases) %>%
   arrange(date) %>%
@@ -858,7 +895,7 @@ data.frame(Days_after_lockdown = c(14,21,28,35),
 ```
 
 
-Numbers of new cases and new deaths, as reported by Public Health Scotland (PHS), have been monitored on a daily basis (Figure \@ref(fig:dailydeathscases)). To assess the rate of spread of COVID-19 in Scotland, we have considered the ratio of the sum of these metrics in the past week compared to their respective sums in the previous week. A similar ratio has been used to measure changes in the number of patients in hospital by comparing daily numbers of patients in hospital and ICU to those one week ago. However, these statistics are potentially subject to biases and we list several caveats which should be considered when interpreting their values.
+Numbers of new cases and new deaths, as reported by Public Health Scotland (PHS), have been monitored on a daily basis (Figure \@ref(fig:casesdeathsposrate)). To assess the rate of spread of COVID-19 in Scotland, we have considered the ratio of the sum of these metrics in the past week compared to their respective sums in the previous week. A similar ratio has been used to measure changes in the number of patients in hospital by comparing daily numbers of patients in hospital and ICU to those one week ago. However, these statistics are potentially subject to biases and we list several caveats which should be considered when interpreting their values.
 
 
 \subsection*{Data}
@@ -874,8 +911,10 @@ We have used ratios of both cases and deaths in the past week compared to the pr
 
 Ratios for patients in hospital are calculated as the number of patients in hospital (or ICU) on a given day compared to the number of patients in hospital (or ICU) one week before (e.g. the ratio for `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-lubridate::days(1)))` is ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-lubridate::days(1)))`’ divided by ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-8))`’).
 
-<!--Graphs of frequencies and ratios are provided separately for each health board in Figures \@ref(fig:cases) to \@ref(fig:deaths).
+<!--Graphs of rates and ratios are provided separately for each Local Authority in Figures \@ref(fig:casespopla) to \@ref(fig:wkrtcasesla).
 -->
+Graphs displaying case data at national level (Figures \@ref(fig:casesdeathsposrate) and \@ref(fig:deathscaseshospicu)) use ‘case reported date’, whereas graphs by age and by local authority are shown by specimen date (Figures \@ref(fig:casespopla) and \@ref(fig:wkrtcasesla)). As test results may take several days to be reported, graphs displaying cases by specimen date omit the last four days in order to avoid under-reporting bias.
+
 Further detail on the sources of data and code used to produce this report, and the method used to calculate confidence intervals for ratios, is available on GitHub at [gcalder/COVID-19](https://github.com/gcalder/COVID-19).
 
 <!--The confidence interval for the log of the ratio of two frequencies (w1/w2) may be approximated by {1/w1 + 1/w2}, based on assuming a Poisson distribution for w1 and w2 (w1 = total cases (or deaths) in past week and w2 = total cases (or death) in previous week, or for number of patients in hospital w1=number of patients on the given day, w2=number of patients on that day the week before). The approximation is obtained from the standard formula: 
@@ -1010,7 +1049,7 @@ ggplot(cases_deaths) +
 \newpage
 \blandscape
 
-```{r, fig.width=11, fig.height=7, dailydeathscases, fig.cap = "Daily cases, deaths and positivity rate and 7 day rolling averages. Positivity rate refers to the percentage of people testing positive out of the total number of people tested each day."}
+```{r casesdeathsposrate, fig.width=11, fig.height=7, fig.cap = "Daily cases, deaths and positivity rate and 7 day rolling averages. Positivity rate refers to the percentage of people testing positive out of the total number of people tested each day."}
 
 fig1 <- scot_data %>%
   select(new_cases, date) %>%
@@ -1473,14 +1512,13 @@ fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) &
   geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_blue) +
-  geom_point(colour = nice_blue, size = 1) +
+  geom_point(colour = nice_blue, size = 0.7) +
   scale_x_date(date_breaks = "8 days", labels = date_format("%b %d")) +
-  scale_y_continuous(trans = "log10", limits = c(0.60, NA),
-                     breaks = c(1, 1.2, 1.5, 2)) +
+  scale_y_continuous(trans = "log10", #limits = c(0.60, NA),
+                     breaks = c(0.8,1, 1.2, 1.5, 2)) +
   labs( x = "", y = "") +
   theme_bw(base_size = 8) +
-  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
-
+  theme(plot.margin = margin(0, 0, -1, 0, "cm")) 
 fig1 <- ggdraw() +
   draw_plot(fig1) +
   draw_plot(fig1_inset, x = 0.50, y = .66, width = .44, height = .20)
@@ -1520,7 +1558,7 @@ fig2_inset <- ggplot(wk_gr_newdeaths_adj_mainplot %>% filter(!is.na(ratio) &
   geom_errorbar(width = 0, alpha = 0.4, aes(colour = ci)) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(aes(colour = line, group = 1)) +
-  geom_point(size = 1, aes(colour = ci)) +
+  geom_point(size = 0.7, aes(colour = ci)) +
   scale_x_date(date_breaks = "8 days", labels = date_format("%b %d")#,expand = expansion(mult = 0.1)
                ) +
   scale_colour_manual(values = c(nice_red, "grey50")) + #CHANGE
@@ -1615,7 +1653,7 @@ fig3_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) &
   geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_green) +
-  geom_point(colour = nice_green, size = 1) +
+  geom_point(colour = nice_green, size = 0.7) +
   scale_x_date(date_breaks = "10 days", labels = date_format("%b %d")) +
   scale_y_continuous(trans = "log10", limits = c(0.75, NA),
                      breaks = c(0.8, 1, 1.5, 2, 3)) +
@@ -1659,7 +1697,7 @@ fig4_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) &
   geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_orange) +
-  geom_point(colour = nice_orange, size = 1) +
+  geom_point(colour = nice_orange, size = 0.7) +
   scale_x_date(date_breaks = "10 days", labels = date_format("%b %d")) +
   scale_y_continuous(trans = "log10") +
   labs( x = "",
@@ -1681,8 +1719,8 @@ gridExtra::grid.arrange(fig1, fig2, fig3, fig4, nrow = 4)
 ```{r tabdeathscaseshospicu}
 bind_rows(wk_gr_newcases %>% filter(date == max(wk_gr_newcases$date)) %>% mutate(Measure = "New Cases (Source: PHS)"),
 wk_gr_newdeaths %>% filter(date == max(wk_gr_newdeaths$date)) %>% mutate(Measure = "New Deaths (Source: PHS)"),
-#wk_gr_hosp_hosp %>% filter(date == max(wk_gr_hosp_hosp$date)) %>% mutate(Measure = "Patients in Hospital (Source: NHS Boards)"),
-#wk_gr_hosp_icu %>% filter(date == max(wk_gr_hosp_icu$date)) %>% mutate(Measure = "Patients in ICU (Source: NHS Boards)")
+wk_gr_hosp_hosp %>% filter(date == max(wk_gr_hosp_hosp$date)) %>% mutate(Measure = "Patients in Hospital (Source: NHS Boards)"),
+wk_gr_hosp_icu %>% filter(date == max(wk_gr_hosp_icu$date)) %>% mutate(Measure = "Patients in ICU (Source: NHS Boards)")
 ) %>%
   mutate(Ratio = formatC(round(ratio_m,2), format='f', digits=2),
          lci = formatC(round(lci,2), format='f', digits=2),
@@ -1699,6 +1737,31 @@ knitr::kable(
 \hfill \break
 \hfill \break
 \hfill \break
+
+```{r casesratiobyage, fig.width=8,fig.cap="Weekly ratios for new cases by age group, plotted on a log10 scale. As the underlying data is cases by specimen date, the last 4 days of data are omitted in order to avoid under-reporting bias."}
+wk_gr_newcases_agr_plt <- wk_gr_newcases_agr %>% filter(date >= dmy("1/09/2020") & date < max(wk_gr_newcases_agr$date)-3)
+ggplot(wk_gr_newcases_agr_plt) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci, colour = AgeGroup) +
+  #geom_errorbar(width = 0, alpha = 0.4) +
+  geom_hline(yintercept = 1, linetype = "dashed", size = 0.2) +
+  geom_line() +
+  geom_point( size = 1) +
+  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d")) +
+  scale_y_continuous(trans = "log10",
+                     #limits = c(0.5,8),
+expand = expansion(mult = 0.1)) +
+  #scale_color_brewer(palette = "Dark2") +
+  scale_color_manual(values = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "grey28", "#E6AB02", "#A6761D")) +
+  labs( x = "End Date of Current Week",
+        y = "Weekly Ratio",
+        #title = "Change in weekly cases/deaths total as ratio of previous week",
+        subtitle = "New Cases (Source: PHS)") +
+  theme_bw(base_size = 10) +
+  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm")) +
+    coord_cartesian(ylim=c(min(wk_gr_newcases_agr_plt$ratio_m)*0.8, max(wk_gr_newcases_agr_plt$ratio_m)*1.4))
+```
+
 
 ```{r deathsno, fig.width=8,fig.cap="Number of deaths per week, compared by location and data source", eval = FALSE}
 ggplot(bind_rows(wk_gr_nps_nrs, wk_gr_newdeaths_latest) %>%
@@ -1743,8 +1806,6 @@ ggplot(wk_gr_nrs_deaths_age) +
   scale_colour_brewer(palette = "Dark2") +
   theme_bw(base_size = 12)
 ```
-
-\newpage
 
 ```{r ratiosnrshpsloc, fig.width=8,fig.cap="Ratio of new deaths during current week vs previous week, compared by location and data source. Figure inset highlights the last date that both PHS and NRS data are available for.", eval = FALSE}
 
@@ -2213,7 +2274,7 @@ ggplot(aes(x = date, y = DailyDeaths,
 ```
 
 
-```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily cases by council area.",eval=FALSE}
+```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily cases by Local Authority.",eval=FALSE}
 ggplot(data_ca) +
    geom_bar(aes(x=date, y = new_cases, fill = Health_board), stat = "identity", position="dodge") +
   scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
@@ -2231,42 +2292,115 @@ ggplot(data_ca) +
         axis.text = element_text(size = 6))
 ```
 
+\newpage
 \newgeometry{top=1.5cm,bottom=1.5cm, left=1cm, right=1cm}
 
-```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily cases per 100,000 population by council area.", eval = FALSE}
+```{r casespopla7dayline, fig.width=8.5,fig.height = 10.5, fig.cap="New daily cases per 100,000 head of population, by local authority. In accordance with the Scottish Government's strategic framework, weekly rates are also displayed as black lines. As the underlying data is cases by specimen date, the last 4 days of data are omitted in order to avoid under-reporting bias. Local authorities are colour coded by the health board in which they sit.", eval = FALSE}
+ymax <- 7  
 data_ca %>% 
-  filter(date >= dmy("1/3/2020")) %>%
-  mutate(rolling_av = zoo::rollmean(new_cases_pop_100000, k = 7, align = "right", fill = NA)) %>%
-  #mutate(rolling_av = case_when(health_board %in% c("Western Isles", "Orkney") ~ NA_integer_,
-  #                               TRUE ~ as.integer(rolling_av))) %>%
+  filter(date >= dmy("1/9/2020") & date < max(data_ca$date)-3) %>%
+  group_by(CAName) %>%
+  arrange(CAName,date) %>%
+  mutate(rolling_av = zoo::rollmean(new_cases, k = 7, align = "right", fill = NA),
+         rolling_sum = zoo::rollsum(new_cases, k = 7, align = "right", fill = NA),
+         rolling_av_rate = 100000*rolling_av/Pop,
+         rolling_sum_rate = 100000*rolling_sum/Pop) %>%
+  mutate(rolling_av_rate = case_when(CAName %in% c("Shetland Islands", "Orkney Islands") ~ NA_real_,
+                                 TRUE ~ rolling_av_rate)) %>%
+  mutate(rolling_sum_rate = case_when(CAName %in% c("Shetland Islands", "Orkney Islands") ~ NA_real_,
+                                 TRUE ~ rolling_sum_rate)) %>%
 ggplot() +
-   geom_bar(aes(x=date, y = new_cases_pop_100000, fill = Health_board), stat = "identity", position="dodge") +
-  #geom_line(aes(x = date, y = rolling_av), colour = "black", size = 0.2) +
+  geom_bar(aes(x=date, y = new_cases_pop_100000, fill = Health_board), stat = "identity", position="dodge") +
+  #geom_line(aes(x = date, y = rolling_av_rate), colour = "black", size = 0.4) +
+  geom_line(aes(x = date, y = rolling_sum_rate/ymax), colour = "black", size = 0.4) +
+  #geom_point(aes(x = date, y = rolling_av_rate, colour = Health_board), size = 0, shape = 95) +
+  #geom_line(aes(x = date, y = rolling_av_rate, colour = Health_board), size = 0, shape = 95) +
   scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
-                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
+                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd"),
+                    guide = guide_legend(override.aes = list(linetype = 0, shape = 15, size =3))) +
+  #scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
+  #                             "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd"),
+  #                    guide = guide_legend(override.aes = list(linetype = 0,
+  #                                                                shape = 15, 
+  #                                                             size = 3))) + 
+  #scale_y_continuous(expand = expansion(mult = c(0,0.1))) +
+  scale_y_continuous(name = 'New Cases per 100K population (PHS)', sec.axis = sec_axis(~.*ymax, 
+                                                                   name = "Weekly rate per 100K population"),
+  expand = expansion(mult = c(0,0.1))) +
   facet_wrap(~CAName, strip.position = "top", ncol = 3#,
              #labeller =labeller(score = c("anaesthesia_pos"="Anaesthesia", "antibiotics_pos"="Antibiotics", "facility" = "Facility", "surgical_principles_pos" = "Surgical \nPrinciples", "wounds" = "Wounds"))
                                 ) +
-    theme(panel.spacing = unit(0, "lines"), 
-         strip.background = element_blank(),
+    theme(#panel.spacing = unit(0, "lines"), 
+          panel.spacing.y=unit(0.5, "lines"),
+          strip.background = element_blank(),
          strip.placement = "outside") +
-  labs(fill = "", x = "", y = "New Cases per 100,000 population (PHS)") +
+  labs(fill = "Health Board:", x = ""#, y = "New Cases per 100,000 population (PHS)"
+       ) +
   theme(legend.position = "top",
         panel.background = element_blank(),
         axis.line = element_line(colour = "black"),
-        axis.text = element_text(size = 6))
+        axis.text = element_text(size = 6),
+        legend.key = element_rect(colour = NA, fill = NA)
+        #legend.key.height = unit(0.3, "cm"),
+        #legend.key.width = unit(0.3, "cm")
+        )
 ```
 
 
-```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily cases per 100,000 population by council area.", eval = FALSE}
+```{r casespopla, fig.width=8.5,fig.height = 10.5, fig.cap="New daily cases per 100,000 head of population, by local authority. 7 day rolling averages are displayed as a black line. As the underlying data is cases by specimen date, the last 4 days of data are omitted in order to avoid under-reporting bias. Local authorities are colour coded by the health board in which they sit.", eval = TRUE}
 data_ca %>% 
-  filter(date >= dmy("1/3/2020")) %>%
-  mutate(rolling_av = zoo::rollmean(new_cases_pop_100000, k = 7, align = "right", fill = NA)) %>%
-  #mutate(rolling_av = case_when(health_board %in% c("Western Isles", "Orkney") ~ NA_integer_,
-  #                               TRUE ~ as.integer(rolling_av))) %>%
+  filter(date >= dmy("1/9/2020") & date < max(data_ca$date)-3) %>%
+  group_by(CAName) %>%
+  arrange(CAName,date) %>%
+  mutate(rolling_av = zoo::rollmean(new_cases, k = 7, align = "right", fill = NA), 
+         rolling_av_rate = 100000*rolling_av/Pop) %>%
+  mutate(rolling_av_rate = case_when(CAName %in% c("Shetland Islands", "Orkney Islands") ~ NA_real_,
+                                 TRUE ~ rolling_av_rate)) %>%
+ggplot() +
+  geom_bar(aes(x=date, y = new_cases_pop_100000, fill = Health_board), stat = "identity", position="dodge") +
+  geom_line(aes(x = date, y = rolling_av_rate), colour = "black", size = 0.4) +
+  #geom_point(aes(x = date, y = rolling_av_rate, colour = Health_board), size = 0, shape = 95) +
+  #geom_line(aes(x = date, y = rolling_av_rate, colour = Health_board), size = 0, shape = 95) +
+  scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
+                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd"),
+                    guide = guide_legend(override.aes = list(linetype = 0, shape = 15, size =3))) +
+  #scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
+  #                             "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd"),
+  #                    guide = guide_legend(override.aes = list(linetype = 0,
+  #                                                                shape = 15, 
+  #                                                             size = 3))) + 
+  scale_y_continuous(expand = expansion(mult = c(0,0.1))) +
+  facet_wrap(~CAName, strip.position = "top", ncol = 3#,
+             #labeller =labeller(score = c("anaesthesia_pos"="Anaesthesia", "antibiotics_pos"="Antibiotics", "facility" = "Facility", "surgical_principles_pos" = "Surgical \nPrinciples", "wounds" = "Wounds"))
+                                ) +
+    theme(#panel.spacing = unit(0, "lines"), 
+          panel.spacing.y=unit(0.5, "lines"),
+          strip.background = element_blank(),
+         strip.placement = "outside") +
+  labs(fill = "Health Board:", x = "", y = "New Cases per 100,000 population (PHS)") +
+  theme(legend.position = "top",
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.text = element_text(size = 6),
+        legend.key = element_rect(colour = NA, fill = NA)
+        #legend.key.height = unit(0.3, "cm"),
+        #legend.key.width = unit(0.3, "cm")
+        )
+```
+
+
+```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily cases per 100,000 population by Local Authority.", eval = FALSE}
+data_ca %>% 
+  filter(date >= dmy("1/9/2020") & date < max(data_ca$date)-3) %>%
+  group_by(CAName) %>%
+  arrange(CAName,date) %>%
+  mutate(rolling_av = zoo::rollmean(new_cases, k = 7, align = "right", fill = NA), 
+         rolling_av_rate = 100000*rolling_av/Pop) %>%
+  mutate(rolling_av_rate = case_when(CAName %in% c("Shetland Islands", "Orkney Islands") ~ NA_real_,
+                                 TRUE ~ rolling_av_rate)) %>%
 ggplot() +
    geom_bar(aes(x=date, y = new_cases_pop_100000, fill = Health_board), stat = "identity", position="dodge") +
-  #geom_line(aes(x = date, y = rolling_av), colour = "black", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av_rate), colour = "black", size = 0.4) +
   scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
                                "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
   facet_wrap(~CAName, strip.position = "top", scales = "free_y", ncol = 3#,
@@ -2283,11 +2417,16 @@ ggplot() +
 ```
 
 
-```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily deaths per 100,000 population by council area.", eval = FALSE}
-ggplot(data_ca) +
+```{r deathspopla, fig.width=8.5,fig.height = 10.5, fig.cap="New daily deaths per 100,000 head of population, by local authority. 7 day rolling averages are displayed as a black line. The last 4 days of data are omitted in order to avoid under-reporting bias. Local authorities are colour coded by the health board in which they sit.", eval = FALSE}
+data_ca %>% filter(date >= dmy("1/9/2020") & date < max(data_ca$date)-3) %>%
+group_by(CAName) %>%
+  arrange(CAName,date) %>%
+  mutate(rolling_av = zoo::rollmean(new_deaths, k = 7, align = "right", fill = NA), 
+         rolling_av_rate = 100000*rolling_av/Pop) %>%
+ggplot() +
    geom_bar(aes(x=date, y = new_deaths_pop_100000, fill = Health_board), stat = "identity", position="dodge") +
   scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
-                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
+   "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
   facet_wrap(~CAName, strip.position = "top", ncol = 3#,
              #labeller =labeller(score = c("anaesthesia_pos"="Anaesthesia", "antibiotics_pos"="Antibiotics", "facility" = "Facility", "surgical_principles_pos" = "Surgical \nPrinciples", "wounds" = "Wounds"))
                                 ) +
@@ -2302,28 +2441,62 @@ ggplot(data_ca) +
 ```
 
 
-```{r fig.width=8.5,fig.height = 10.5, fig.cap = "Weekly ratios for new cases for the last 21 days for each council area. Weekly ratios for new cases are ratios of weekly sums, plotted on a log10 scale. Dotted red lines highlight a weekly ratio value of 1.", eval = FALSE}
-ggplot(wk_gr_newcases_ca %>% filter(date > max(data_ca$date)-20)) +
-  geom_rect(data=data.frame(xmin = max(data_ca$date)-3, xmax = max(data_ca$date), ymin = -Inf, ymax = Inf),
-    aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey", alpha=0.5) +
+```{r wkrtcasesla, fig.width=8.5,fig.height = 10.5, fig.cap = "Weekly ratios for new cases for the last 21 days, by local authority. Weekly ratios for new cases are ratios of weekly sums, plotted on a log10 scale. Dotted red lines highlight a weekly ratio value of 1. Local authorities are colour coded by the health board in which they sit. As the underlying data is cases by specimen date, the last 4 days of data are omitted in order to avoid under-reporting bias.", eval = TRUE}
+ggplot(wk_gr_newcases_ca %>% filter(date > max(data_ca$date)-25 & date < max(data_ca$date)-3)) +
+  #geom_rect(data=data.frame(xmin = max(data_ca$date)-3, xmax = max(data_ca$date), ymin = -Inf, ymax = Inf),
+    #aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)) +
   geom_point(aes(x=date, y = ratio_m, colour = Health_board), size = 1) +
   geom_line(aes(x=date, y = ratio_m, colour = Health_board) ) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2, alpha = 0.7) +
   scale_colour_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
-                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
+                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd"),
+                      guide = guide_legend(override.aes = list(linetype = 0,
+                                                                  shape = 15, 
+                                                               size = 6))) + 
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
   #facet_grid(Health_board~CAName, scales = "free_y") + 
   facet_wrap(~CAName, strip.position = "top", scales = "free_y", ncol = 3) +
-    theme(panel.spacing = unit(0, "lines"), 
+    theme(#panel.spacing = unit(0, "lines"), 
+          panel.spacing.y=unit(0.5, "lines"),
          strip.background = element_blank(),
          strip.placement = "outside") +
-  labs(fill = "", x = "", y = "New Cases Weekly Ratios") +
+  labs(colour = "Health Board:", fill = "", x = "", y = "Weekly Ratio of New Cases") +
   theme(legend.position = "top",
         panel.background = element_blank(),
         axis.line = element_line(colour = "black"),
-        axis.text = element_text(size = 6))
+        axis.text = element_text(size = 6),
+        legend.key = element_rect(colour = NA, fill = NA))
 ```
 
 \restoregeometry
+
+```{r, fig.width=7, fig.cap="Map showing weekly ratio by Local Authority", eval = FALSE}
+wk_gr_newcases_ca_4map <- wk_gr_newcases_ca %>% filter(date > max(data_ca$date)-7 & date < max(data_ca$date)-3)
+ca_map_simp2 <- ca_map_simp %>%
+  left_join(select(wk_gr_newcases_ca_4map, CAName, date, ratio_m), by = c("geo_label" = "CAName"))
+
+minimal_theme <- theme_minimal() +
+     theme(axis.line=element_blank(),
+      axis.text=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title=element_blank(),
+      panel.border = element_blank(),
+     panel.grid = element_blank(),
+     panel.background = element_blank())
+
+map1 <- ggplot(data = ca_map_simp2) +
+    geom_sf(aes(fill = ratio_m)) +
+    #scale_fill_viridis_c(option = "inferno", trans = "sqrt", direction = -1) +
+  scale_fill_gradient2(low = muted("blue"), mid = "white",
+  high = muted("red"),midpoint = 1) +
+  minimal_theme + labs(fill = "Weekly\nRatio\nof cases") + #labs(title = "Weekly Ratio of Cases by Local Authority") +
+  facet_grid(. ~ date )
+
+map1
+```
+
+
+
 
 
 

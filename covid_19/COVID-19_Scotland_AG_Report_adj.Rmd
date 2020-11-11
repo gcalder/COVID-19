@@ -59,45 +59,54 @@ hb_pop <- read_csv("Scotland_Population_Size_By_HealthBoard.csv") %>%
 ## Covid daily hospital data
 myurl <- "https://www.gov.scot/binaries/content/documents/govscot/publications/statistics/2020/04/coronavirus-covid-19-trends-in-daily-data/documents/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/govscot%3Adocument/Trends%2Bin%2Bdaily%2BCOVID-19%2Bdata%2B-%2B110520.xlsx?forceDownload=true"
 #myurl <- "https://www.gov.scot/binaries/content/documents/govscot/publications/statistics/2020/04/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/documents/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/govscot%3Adocument/Data%2BTable%2B%252810-04-2020%2529.xlsx?forceDownload=true"
-GET(myurl, write_disk(tmp <- tempfile(fileext = ".xlsx")))
+GET(myurl, write_disk(tmp_hps <- tempfile(fileext = ".xlsx")))
 GET(myurl, write_disk("hps_daily.xlsx", overwrite = TRUE))
 
 #data_hosp <- read_excel(tmp, sheet = "Table 1", skip = 3)
-data_hosp <- read_excel(tmp, sheet = "Table 2 - Hospital Care", skip = 3)
+data_hosp <- read_excel(tmp_hps, sheet = "Table 2 - Hospital Care", skip = 3)
+data_hosp <- read_excel(tmp_hps, sheet = "Table 2 - Hospital Care", skip =2)
+data_tests <- read_excel(tmp_hps, sheet = "Table 5 - Testing")
+data_deaths <- read_excel(tmp_hps, sheet = "Table 8 - Deaths", skip =2)
 #data_hosp <- filter(data_hosp, `...1` != Sys.Date()) # CHANGE
 
 data_hosp <- data_hosp %>%
-  rename("date" = "...1",
-         "ICU_confirmed" = "Confirmed...2",
-         "ICU_suspected" ="Suspected...3", 
-         "ICU_total" = "Total...4",
-         "Hospital_confirmed" = "Confirmed...5",
-         "Hospital_suspected" = "Suspected...6",
-         "Hospital_total" = "Total...7" ) %>%
-  filter(!is.na(ICU_total)) %>%
-  mutate(date = lubridate::ymd(date)) %>%
-  mutate(ICU_confsusp = case_when(is.na(ICU_confirmed) & is.na(ICU_suspected) ~ ICU_total)) %>%
-  mutate(Hospital_confsusp = case_when(is.na(Hospital_confirmed) & is.na(Hospital_suspected) ~ Hospital_total)) %>%
-  select(date, contains("ICU"), everything()) %>%
+             mutate(date = ymd(`Reporting Date`)) %>%
+             rename(ICU_total = `(i) COVID-19 patients in ICU\r\n or combined ICU/HDU`,
+                    Hospital_total = `(ii) COVID-19 patients in hospital (including those in ICU)`) %>%
   mutate(date = date - days(1))
 
-data_hosp_icu <- data_hosp %>%
-  select(date, contains("ICU")) %>%
-  pivot_longer(cols = c(ICU_confirmed, ICU_suspected, ICU_confsusp), names_to = "Patients", values_to = "Number") %>%
-  mutate(Patients = recode(Patients,  "ICU_confsusp" = "Confirmed/Suspected", 
-                           "ICU_confirmed" = "Confirmed", 
-                           "ICU_suspected" = "Suspected")) %>%
-  mutate(Patients = factor(Patients, levels = c("Confirmed/Suspected", "Suspected", "Confirmed")))
-
-
-
-data_hosp_hosp <- data_hosp %>%
-  select(date, contains("hospital")) %>%
-  pivot_longer(cols = c(Hospital_confirmed, Hospital_suspected, Hospital_confsusp), names_to = "Patients", values_to = "Number") %>%
-  mutate(Patients = recode(Patients,  "Hospital_confsusp" = "Confirmed/Suspected", 
-                           "Hospital_confirmed" = "Confirmed", 
-                           "Hospital_suspected" = "Suspected")) %>%
-  mutate(Patients = factor(Patients, levels = c("Confirmed/Suspected", "Suspected", "Confirmed")))
+# data_hosp <- data_hosp %>%
+#   rename("date" = "...1",
+#          "ICU_confirmed" = "Confirmed...2",
+#          "ICU_suspected" ="Suspected...3", 
+#          "ICU_total" = "Total...4",
+#          "Hospital_confirmed" = "Confirmed...5",
+#          "Hospital_suspected" = "Suspected...6",
+#          "Hospital_total" = "Total...7" ) %>%
+#   filter(!is.na(ICU_total)) %>%
+#   mutate(date = lubridate::ymd(date)) %>%
+#   mutate(ICU_confsusp = case_when(is.na(ICU_confirmed) & is.na(ICU_suspected) ~ ICU_total)) %>%
+#   mutate(Hospital_confsusp = case_when(is.na(Hospital_confirmed) & is.na(Hospital_suspected) ~ Hospital_total)) %>%
+#   select(date, contains("ICU"), everything()) %>%
+#   mutate(date = date - days(1))
+# 
+# data_hosp_icu <- data_hosp %>%
+#   select(date, contains("ICU")) %>%
+#   pivot_longer(cols = c(ICU_confirmed, ICU_suspected, ICU_confsusp), names_to = "Patients", values_to = "Number") %>%
+#   mutate(Patients = recode(Patients,  "ICU_confsusp" = "Confirmed/Suspected", 
+#                            "ICU_confirmed" = "Confirmed", 
+#                            "ICU_suspected" = "Suspected")) %>%
+#   mutate(Patients = factor(Patients, levels = c("Confirmed/Suspected", "Suspected", "Confirmed")))
+# 
+# 
+# 
+# data_hosp_hosp <- data_hosp %>%
+#   select(date, contains("hospital")) %>%
+#   pivot_longer(cols = c(Hospital_confirmed, Hospital_suspected, Hospital_confsusp), names_to = "Patients", values_to = "Number") %>%
+#   mutate(Patients = recode(Patients,  "Hospital_confsusp" = "Confirmed/Suspected", 
+#                            "Hospital_confirmed" = "Confirmed", 
+#                            "Hospital_suspected" = "Suspected")) %>%
+#   mutate(Patients = factor(Patients, levels = c("Confirmed/Suspected", "Suspected", "Confirmed")))
 
 wk_gr_hosp_icu <- data_hosp %>%
        mutate(ICU_prev = lag(ICU_total , 7), 
@@ -120,13 +129,13 @@ wk_gr_hosp_icu <- data_hosp %>%
 wk_gr_hosp_icu_latest <- filter(wk_gr_hosp_icu, date == max(wk_gr_hosp_icu$date))
 
 wk_gr_hosp_hosp <- data_hosp %>%
-       mutate(Hosp_prev = lag(Hospital_confirmed , 7), 
+       mutate(Hosp_prev = lag(Hospital_total , 7), 
          weekdays(date)) %>%
        filter(date >= ymd("2020-03-25")) %>%
        #pivot_longer(c(Hospital_total, Hosp_prev), names_to = "week", values_to = "number") %>%
       group_by(date) %>%
       nest() %>%
-      mutate(tab = map(data, ~ weekly_ratios_ci(.x$Hospital_confirmed, .x$Hosp_prev))) %>%
+      mutate(tab = map(data, ~ weekly_ratios_ci(.x$Hospital_total, .x$Hosp_prev))) %>%
   mutate(ratio_m = map_dbl(tab, ~parse_number(as.character((.x[1,2]))))) %>% 
   mutate(lci = map_dbl(tab, ~parse_number(as.character((.x[2,2]))))) %>% 
   mutate(uci = map_dbl(tab, ~parse_number(as.character((.x[3,2]))))) %>% 
@@ -148,7 +157,7 @@ wk_gr_hosp_hosp <- data_hosp %>%
 wk_gr_hosp_hosp_latest <- filter(wk_gr_hosp_hosp, date == max(wk_gr_hosp_icu$date))
 
 # Import NRS data
-myurl_deaths <- "https://www.nrscotland.gov.uk/files//statistics/covid19/covid-deaths-data-week-22.xlsx"
+myurl_deaths <- "https://www.nrscotland.gov.uk/files//statistics/covid19/covid-deaths-data-week-32.xlsx"
 GET(myurl_deaths, write_disk(tmp <- tempfile(fileext = ".xlsx")))
 GET(myurl_deaths, write_disk("nrs.xlsx", overwrite = TRUE))
 
@@ -156,7 +165,7 @@ GET(myurl_deaths, write_disk("nrs.xlsx", overwrite = TRUE))
 nrs_deaths_covid_raw <- read_excel(tmp, sheet = "Table 1 - COVID deaths", skip = 3) %>%
   select(-`Year to Date`) %>%
   rename("Details" = "...2",
-         "Total" = "...26")
+         "Total" = "...36")
 
 nrs_deaths_covid <- nrs_deaths_covid_raw %>% filter(`Week beginning` == "Deaths involving COVID-194") %>%
   pivot_longer(cols = `43829`:names(nrs_deaths_covid_raw)[ncol(nrs_deaths_covid_raw)-1],
@@ -247,24 +256,46 @@ wk_gr_nrs_deaths_hb <- nrs_deaths_covid_hb %>%
 
 # Import Scottish covid data
 #path <- "COVID-19_Scotland_data_all_2020-04-10.xlsx" 
-path <- paste0("Daily_Reports/COVID-19_Scotland_data_all_", {Sys.Date()}, ".xlsx") 
+#path <- paste0("Daily_Reports/COVID-19_Scotland_data_all_", {Sys.Date()-22}, ".xlsx") 
 # Scottish cases data
-scot_data_raw <- read_excel(path, sheet = "Cases By Health Board", skip = 1)
-scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrease")) %>%
-              rename(confirmed_cases= Total,
-                     Date = Health_Board) %>%
-              mutate(date = lubridate::ymd(Date)) %>%
-              select(-Date) 
-  
-scot_data_raw$date[nrow(scot_data_raw)] <- scot_data_raw$date[nrow(scot_data_raw)-1] + days(1)
-#scot_data_raw$confirmed_cases[nrow(scot_data_raw)] <- 4565 ## REMOVE
+# scot_data_raw <- read_excel(path, sheet = "Cases By Health Board", skip = 1)
+# scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrease")) %>%
+#               rename(confirmed_cases= Total,
+#                      Date = Health_Board) %>%
+#               mutate(date = lubridate::ymd(Date)) %>%
+#               select(-Date) 
+#   
+# scot_data_raw$date[nrow(scot_data_raw)] <- scot_data_raw$date[nrow(scot_data_raw)-1] + days(1)
+# #scot_data_raw$confirmed_cases[nrow(scot_data_raw)] <- 4565 ## REMOVE
+# 
+# scot_data_raw <- scot_data_raw %>%
+#               mutate(date = date - days(1))
+# 
+# scot_data <- scot_data_raw %>%
+#              mutate(new_cases = confirmed_cases - replace_na(lag(confirmed_cases),0)) #%>%
+#              #mutate(doubling_time_week = 7*log(2)/log(confirmed_cases/replace_na(lag(confirmed_cases,7),0))) 
 
-scot_data_raw <- scot_data_raw %>%
-              mutate(date = date - days(1))
+scot_tests <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
+           rename("Date" = "...1") %>%
+  rename(total_people_tested = Total) %>%
+  mutate(new_people_tested = total_people_tested - lag(total_people_tested)) %>%
+  mutate(new_cases = `Daily...5`) %>%
+  #mutate(total_daily_tests = `Total daily tests`) %>%
+  mutate(date = lubridate::ymd(Date)) %>%
+  mutate(positive_perc = 100*new_cases/new_people_tested) %>%
+  select(-Date) %>%
+  select(date, new_cases, new_people_tested, total_people_tested, positive_perc) 
 
-scot_data <- scot_data_raw %>%
-             mutate(new_cases = confirmed_cases - replace_na(lag(confirmed_cases),0)) #%>%
-             #mutate(doubling_time_week = 7*log(2)/log(confirmed_cases/replace_na(lag(confirmed_cases,7),0))) 
+
+scot_data <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
+           rename("Date" = "...1", 
+         "confirmed_cases" = "Positive"
+         ) %>%
+  mutate(new_cases = `Daily...5`) %>%
+  mutate(date = lubridate::ymd(Date)) %>%
+  select(-Date) %>%
+  select(date, new_cases, confirmed_cases) %>%
+  mutate(date = date - days(1))
 
 # HPS cases adjust bank holiday effect
 scot_data <- scot_data %>%
@@ -295,18 +326,23 @@ scot_data <- left_join(scot_data, scot_data_adj, by = "date") %>%
 
              
 # Scottish death data
-scot_deaths <- read_excel(path, sheet = "Scotland Deaths", skip = 1) %>%
-  rename("deaths" = Deaths_Cum, 
-         "new_deaths" = Deaths_New) %>%
-  #mutate(doubling_time_week = 7*log(2)/log(deaths/replace_na(lag(deaths,7),0))) %>%
-  mutate(date = lubridate::ymd(Date))
-  
+# scot_deaths <- read_excel(path, sheet = "Scotland Deaths", skip = 1) %>%
+#   rename("deaths" = Deaths_Cum, 
+#          "new_deaths" = Deaths_New) %>%
+#   #mutate(doubling_time_week = 7*log(2)/log(deaths/replace_na(lag(deaths,7),0))) %>%
+#   mutate(date = lubridate::ymd(Date))
+#   
+# 
+# scot_deaths$date[nrow(scot_deaths)] <- scot_deaths$date[nrow(scot_deaths)-1] + days(1)
 
-scot_deaths$date[nrow(scot_deaths)] <- scot_deaths$date[nrow(scot_deaths)-1] + days(1)
+scot_deaths <- data_deaths %>%
+  rename("deaths" = `Number of COVID-19 confirmed deaths registered to date`) %>%
+  mutate(date = lubridate::ymd(Date)) %>%
+  select(date, deaths) %>%
+  mutate(new_deaths = c(1,diff(deaths, 1)))
 
 scot_deaths <- scot_deaths %>%
-  mutate(date = date - days(1)) %>%
-  select(-Date)
+  mutate(date = date - days(1)) 
 
 # HPS deaths adjust bank holiday effect
 scot_deaths <- scot_deaths %>%
@@ -337,26 +373,26 @@ scot_deaths_adj <- scot_deaths_montues %>%
 scot_deaths <- left_join(scot_deaths, scot_deaths_adj, by = "date") %>%
   mutate(new_deaths_adj = coalesce(new_deaths_adj,new_deaths)) 
 
-# Scottish tests
-scot_tests <- read_excel(path, sheet = "CPT & DPC") 
-#scot_tests$Cases[nrow(scot_tests)] <- 4565 #REMOVE
-
-scot_tests  <- scot_tests %>%
-  rename("Conducted" = Tests, 
-         "Total Positive" = Cases,
-         "deaths_per_case" = DPC,
-         "cases_per_test" = CPT) %>%
-  mutate("Conducted today" = Conducted - replace_na(lag(Conducted), 0)) %>%
-  mutate("Total Negative" = Conducted - `Total Positive`) %>%
-  mutate("Positive" = `Total Positive` - replace_na(lag(`Total Positive`), 0),
-         "Negative" = `Total Negative` - replace_na(lag(`Total Negative`), 0)) 
-scot_tests$Positive[scot_tests$Date == ymd("2020-03-12")] <- 24
-scot_tests$Negative[scot_tests$Date == ymd("2020-03-12")] <- 552
-
-  
-scot_tests_long <- scot_tests %>%
-pivot_longer(cols = Positive:Negative, names_to = "Result", values_to = "Number") %>%
-mutate(Result = factor(Result, levels = c("Positive", "Negative")))
+# # Scottish tests
+# scot_tests <- read_excel(path, sheet = "CPT & DPC") 
+# #scot_tests$Cases[nrow(scot_tests)] <- 4565 #REMOVE
+# 
+# scot_tests  <- scot_tests %>%
+#   rename("Conducted" = Tests, 
+#          "Total Positive" = Cases,
+#          "deaths_per_case" = DPC,
+#          "cases_per_test" = CPT) %>%
+#   mutate("Conducted today" = Conducted - replace_na(lag(Conducted), 0)) %>%
+#   mutate("Total Negative" = Conducted - `Total Positive`) %>%
+#   mutate("Positive" = `Total Positive` - replace_na(lag(`Total Positive`), 0),
+#          "Negative" = `Total Negative` - replace_na(lag(`Total Negative`), 0)) 
+# scot_tests$Positive[scot_tests$Date == ymd("2020-03-12")] <- 24
+# scot_tests$Negative[scot_tests$Date == ymd("2020-03-12")] <- 552
+# 
+#   
+# scot_tests_long <- scot_tests %>%
+# pivot_longer(cols = Positive:Negative, names_to = "Result", values_to = "Number") %>%
+# mutate(Result = factor(Result, levels = c("Positive", "Negative")))
 
 
 # Plot colours
@@ -382,7 +418,8 @@ wk_gr_newcases <- scot_data %>% select(new_cases, date) %>%
        filter(!is.na(ratio) & !is.infinite(ratio)) %>%
        significance_wk() %>%
        mutate(ratio_under_1 = ratio_m<1) %>%
-       mutate(type = "raw")
+       mutate(type = "raw") %>%
+       mutate(symbol = case_when(change_prev == 0 & change >0 ~ "*"))
 
 wk_gr_newcases_adj <- scot_data %>% select(new_cases_adj, date) %>%
       mutate(outcome = new_cases_adj) %>%
@@ -393,7 +430,8 @@ wk_gr_newcases_adj <- scot_data %>% select(new_cases_adj, date) %>%
        mutate(type = "adjusted") %>%
        mutate(ratio_m = case_when(date %in% public_hols_keep ~ ratio_m),
               lci = case_when(date %in% public_hols_keep_ci ~ lci),
-              uci = case_when(date %in% public_hols_keep_ci ~ uci)) 
+              uci = case_when(date %in% public_hols_keep_ci ~ uci)) %>%
+       mutate(symbol = case_when(change_prev == 0 & change >0 ~ "*"))
 
 
 wk_gr_newcases_adj <- bind_rows(wk_gr_newcases, wk_gr_newcases_adj) %>% mutate(source = "HPS")
@@ -407,7 +445,8 @@ wk_gr_newdeaths <- scot_deaths %>% select(new_deaths, date) %>%
        filter(!is.na(ratio) & !is.infinite(ratio)) %>%
        significance_wk() %>%
   mutate(ratio_under_1 = ratio_m<1) %>%
-       mutate(type = "raw")
+       mutate(type = "raw") %>%
+       mutate(symbol = case_when(change_prev == 0 & change >0 ~ "*"))
 
 wk_gr_newdeaths_adj <- scot_deaths %>% select(new_deaths_adj, date) %>%
       mutate(outcome = new_deaths_adj) %>%
@@ -418,7 +457,8 @@ wk_gr_newdeaths_adj <- scot_deaths %>% select(new_deaths_adj, date) %>%
        mutate(type = "adjusted") %>%
        mutate(ratio_m = case_when(date %in% public_hols_keep ~ ratio_m),
               lci = case_when(date %in% public_hols_keep_ci ~ lci),
-              uci = case_when(date %in% public_hols_keep_ci ~ uci))
+              uci = case_when(date %in% public_hols_keep_ci ~ uci)) %>%
+       mutate(symbol = case_when(change_prev == 0 & change >0 ~ "*"))
 
 wk_gr_newdeaths_adj_mainplot <- scot_deaths %>% select(new_deaths_adj, date) %>%
       mutate(outcome = new_deaths_adj) %>%
@@ -426,7 +466,8 @@ wk_gr_newdeaths_adj_mainplot <- scot_deaths %>% select(new_deaths_adj, date) %>%
       mutate(ci = case_when(date %in% public_hols_keep_ci ~ "Adjusted",
                             !date %in% public_hols_keep_ci ~ "Unadjusted"),
              line =case_when(date %in% public_hols_keep_line ~ "Adjusted",
-                            !date %in% public_hols_keep_line ~ "Unadjusted") )
+                            !date %in% public_hols_keep_line ~ "Unadjusted") ) %>%
+       mutate(symbol = case_when(change_prev == 0 & change >0 ~ "*"))
 
 wk_gr_newdeaths_adj_adj <- wk_gr_newdeaths_adj %>%
                mutate(adjusted = date %in% public_hols_keep_ci,
@@ -590,15 +631,7 @@ wk_gr_newcases_hb <- hb_cases %>% rename("outcome" = new_cases) %>%
   unnest(gr) %>%
   filter(date >= ymd("2020-03-23")) %>%
   filter(!is.na(ratio) & !is.infinite(ratio))  %>%
-  significance_wk() %>%
-  mutate(symbol = case_when(significance == "not significantly greater than 1" ~ "not sig <>1",
-                            significance == "not significantly less than 1" ~ "not sig <>1",
-                            significance == "significantly greater than 1" ~ "sig <> 1",
-                            significance == "significantly less than 1" ~ "sig <> 1")) %>%
-  mutate(sign_ci = case_when(significance == "not significantly greater than 1" ~ "This is not significantly greater than 1",
-                             significance == "not significantly less than 1" ~ "This is not significantly less than 1",
-                             significance == "significantly greater than 1" ~ "This is significantly greater than 1",
-                             significance == "significantly less than 1" ~ "This is significantly less than 1"))
+  significance_wk() 
 
 #HB ICU
 hb_icu <- read_excel(tmp, sheet = "Table 2 - ICU patients", skip = 2) %>%
@@ -616,7 +649,7 @@ hb_icu <- read_excel(tmp, sheet = "Table 2 - ICU patients", skip = 2) %>%
   mutate(ICU_total_10000 = 10000*ICU_total/Pop_Size) %>%
   group_by(health_board) %>%
   mutate(ICU_prev = lag(ICU_total , 7)) %>%
-  mutate(symbol = case_when(ICU_prev == 0 & ICU_total >0 ~ "*"))
+  mutate(symbol = case_when(is.na(ICU_prev) & ICU_total >0 ~ "*"))
 
 hb_icu_keep <- hb_icu %>%
   group_by(health_board) %>%
@@ -643,11 +676,11 @@ wk_gr_hosp_icu_hb <- hb_icu %>%
   ungroup() %>%
   select(health_board, date, ratio_m, lci, uci) %>%
   mutate(comparison = if_else(ratio_m >1, "greater than", "less than")) %>%
-  significance_wk() %>%
+  #significance_wk() %>%
   mutate(ratio_under_1 = ratio_m<1)
 
 #HB HOSPITAL
-hb_hosp_conf <- read_excel(tmp, sheet = "Table 3a - Hospital Confirmed", skip = 2) %>%
+hb_hosp_conf <- read_excel(tmp, sheet = "Table 3 - Hospital patients", skip = 2) %>%
                 select(-Scotland, -`Golden Jubilee National Hospital` ) %>%
                 mutate(date = lubridate::ymd(Date)) %>%
            select(-Date) %>%
@@ -663,22 +696,24 @@ hb_hosp_conf <- read_excel(tmp, sheet = "Table 3a - Hospital Confirmed", skip = 
   mutate(Hosp_confirmed_10000 = 10000*Hosp_confirmed/Pop_Size) %>%
   group_by(health_board) %>%
   mutate(Hosp_confirmed_prev = lag(Hosp_confirmed , 7)) %>%
-  mutate(symbol = case_when(Hosp_confirmed_prev == 0 & Hosp_confirmed >0 ~ "*"))
+  mutate(symbol = case_when(is.na(Hosp_confirmed_prev) & Hosp_confirmed >0 ~ "*"))
 
-hb_hosp_susp <- read_excel(tmp, sheet = "Table 3b- Hospital Suspected", skip =2) %>%
-           select(-Scotland, -`Golden Jubilee National Hospital` ) %>%
-           mutate(date = lubridate::ymd(Date)) %>%
-           select(-Date) %>%
-           mutate_if(is.numeric,as.character, is.factor, as.character) %>%
-           pivot_longer(cols = `NHS Ayrshire & Arran`:`NHS Western Isles`, names_to = "health_board", values_to = "Hosp_suspected") %>%
-           mutate(Hosp_suspected = parse_number(Hosp_suspected)) %>%
-           mutate(health_board = str_remove(health_board, "NHS ")) %>%
-           mutate(Hosp_suspected = case_when(health_board == "Greater Glasgow & Clyde" ~ 0, 
-                                             TRUE ~ Hosp_suspected)) %>%
-           mutate(date = date - days(1))
+hb_hosp_total <- hb_hosp_conf
 
-hb_hosp_total <- left_join(hb_hosp_conf, hb_hosp_susp) %>%
-                 mutate(Hosp_total = Hosp_confirmed + Hosp_suspected)
+# hb_hosp_susp <- read_excel(tmp, sheet = "Table 3b- Hospital Suspected", skip =2) %>%
+#            select(-Scotland, -`Golden Jubilee National Hospital` ) %>%
+#            mutate(date = lubridate::ymd(Date)) %>%
+#            select(-Date) %>%
+#            mutate_if(is.numeric,as.character, is.factor, as.character) %>%
+#            pivot_longer(cols = `NHS Ayrshire & Arran`:`NHS Western Isles`, names_to = "health_board", values_to = "Hosp_suspected") %>%
+#            mutate(Hosp_suspected = parse_number(Hosp_suspected)) %>%
+#            mutate(health_board = str_remove(health_board, "NHS ")) %>%
+#            mutate(Hosp_suspected = case_when(health_board == "Greater Glasgow & Clyde" ~ 0, 
+#                                              TRUE ~ Hosp_suspected)) %>%
+#            mutate(date = date - days(1))
+# 
+# hb_hosp_total <- left_join(hb_hosp_conf, hb_hosp_susp) %>%
+#                  mutate(Hosp_total = Hosp_confirmed + Hosp_suspected)
 
 hb_hosp_keep <- hb_hosp_conf %>%
   group_by(health_board) %>%
@@ -708,7 +743,7 @@ wk_gr_hosp_hosp_hb <- hb_hosp_conf %>%
 
 ```
 
-Numbers of new cases and new deaths, as reported by Health Protection Scotland (HPS), have been monitored on a daily basis (Figure \@ref(fig:dailydeathscases)). To assess the rate of spread of COVID-19 in Scotland, we have considered the ratio of the sum of these metrics in the past week compared to their respective sums in the previous week. A similar ratio has been used to measure changes in the number of patients in hospital by comparing daily numbers of patients in hospital and ICU to those one week ago (Figure \@ref(fig:dailyoccupancy)). However, these statistics are potentially subject to biases and we list several caveats which should be considered when interpreting their values.
+Numbers of new cases and new deaths, as reported by Health Protection Scotland (HPS), have been monitored on a daily basis (Figure \@ref(fig:dailydeathscases)). To assess the rate of spread of COVID-19 in Scotland, we have considered the ratio of the sum of these metrics in the past week compared to their respective sums in the previous week. A similar ratio has been used to measure changes in the number of patients in hospital by comparing daily numbers of patients in hospital and ICU to those one week ago. However, these statistics are potentially subject to biases and we list several caveats which should be considered when interpreting their values.
 
 
 \subsection*{Data}
@@ -764,7 +799,7 @@ Daily numbers of cases and deaths are affected by:
 
 -	Variations in hospital admission policy, e.g. if admission criteria are relaxed then a higher proportion of COVID-19 patients are admitted and tested, and then included in the daily case and (HPS) death statistics.
 
-- Variations in reporting of deaths and test results across week days (Figure \@ref(fig:dayoftheweeklast2weeks)) and due to public holidays.
+- Variations in reporting of deaths and test results across week days and due to public holidays.
 
 <!--HPS death counts include individuals who are tested outside hospital. An increased frequency of testing in care homes coupled with the increasing number of deaths in this setting (see Figures \@ref(fig:deathsno) and \@ref(fig:ratiosnrshpsloc)) makes HPS numbers difficult to compare over time. The NRS ‘all COVID-19’ death numbers may allow a more consistent comparison to be made, and additionally allow care home and other non-hospital deaths to be considered separately. However, these data are only issued on a weekly basis and they will be less up-to-date than that from HPS.-->
 
@@ -800,9 +835,9 @@ The use of weekly ratios helps to smooth out variations occurring across week da
 
 The confidence intervals indicate the accuracy of the observed ratio of the two particular weeks considered. However, there are many factors which influence the ratios other than the true underlying rate of spread of COVID-19. Some of these will be systematic (as described in the above caveats) and others may be more random. The caveats should all be considered when interpreting the ratios, particularly when the confidence interval does not include 1. 
 
-The weekly ratios will be less accurate when numbers are smaller, particularly for ICU numbers and deaths, and for health board specific ratios. If there have been no occurrences during the two week period, the ratio will be missing. However, ratios where there has been at least one case in the past week but none in the previous week have been indicated in Figure 12 by an asterisk symbol. When there have been no occurrences in the past week but one or more in the previous week, then the resulting zero ratios are shown. Low accuracy (and hence wide confidence intervals) is most noticeable in the early part of the epidemic and will become apparent again as numbers reduce. At this stage it will become difficult to accurately determine rates of change and it may be preferable to use alternative strategies to monitor the epidemic.
+The weekly ratios will be less accurate when numbers are smaller, particularly for ICU numbers and deaths, and when calculated separately for health boards (Figures \@ref(fig:hb3) and 12). If there have been no occurrences (or <5 for hospital/ICU numbers) then the ratio will be missing. However, ratios where there has been at least one case in the past week but none in the previous week (or 5+ in the past week but <5 in the previous week for hospital/ICU numbers), have been indicated in Figure 12 by an asterisk. When there have been no occurrences in the past week but one or more in the previous week, then the resulting zero ratios are shown. Low accuracy (and hence wide confidence intervals) is most noticeable in the early part of the epidemic and will become apparent again as numbers reduce. At this stage it will become difficult to accurately determine ratios and it may be necessary to use alternative strategies to monitor the epidemic.
 
-There is some analogy between the ratios presented and the R number, and values of less than 1 (or greater than 1) might be expected to correspond to R numbers of less than (or greater than) 1. While their values will not be identical, a rudimentary conversion based on a serial interval of 6.48 days (as used in the ICL model) indicates they would be similar. For example, a ratio of 0.70 would correspond to R=0.72, a ratio of 0.80 to R=0.813, and a ratio of 0.90 to R=0.91 (R=Ratio\textsuperscript{(6.48/7)}). However, this analogy assumes uniform reporting over the two week period used to calculate each ratio. Furthermore it should be borne in mind that each statistic reflects a different manifestation of the virus, and none are fully representative of the true underlying rate of spread of infection in the whole population. Death ratios are heavily influenced by the rate of spread to and within older age groups, and take less account of the rate of spread in younger age groups. Similarly cases and hospital in-patients predominantly include those with more severe symptoms, and so do not fully capture the rate of infection spread within the whole population. Nevertheless these statistics have clear value for monitoring the impact of the virus on health service requirements, and will still serve as broad indicators of the underlying rate of spread of the virus occurring 3-4 weeks earlier. An ongoing survey of the population would be needed to provide more definitive and up-to-date estimates of this rate and the underlying R value.
+There is some analogy between the ratios presented and the R number, and values of less than 1 (or greater than 1) might be expected to correspond to R numbers of less than (or greater than) 1. While their values will not be identical, a rudimentary conversion based on a serial interval of 6.48 days (as used in the ICL model) indicates they would be similar. For example, a ratio of 0.70 would correspond to R=0.72, a ratio of 0.80 to R=0.813, and a ratio of 0.90 to R=0.91 (R=Ratio\textsuperscript{(6.48/7)}). However, this analogy assumes uniform reporting over the two week period used to calculate each ratio. Furthermore it should be borne in mind that each statistic reflects a different manifestation of the virus, and none are fully representative of the true underlying rate of spread of infection in the whole population. Death ratios are heavily influenced by the rate of spread to and within older age groups, and take less account of the rate of spread in younger age groups. Similarly cases and hospital in-patients predominantly include those with more severe symptoms, and so do not fully capture the rate of infection spread within the whole population. Nevertheless these statistics have clear value for monitoring the impact of the virus on health service requirements, and will still serve as broad indicators of the underlying rate of spread of the virus occurring 3-4 weeks earlier. 
 
 <!--A modelling approach would be suggested to confirm whether the ratios have consistently fallen below 1 and to determine whether their values have stabilised. Note that while the ratios are related to the R number and values of less than (or greater than) 1 might be expected to correspond to R numbers of less than (or greater than) 1, their values will not be the same. Additionally this analogy is based on unchanged policies for testing and hospitalisation over the two week period used to calculate the ratio.-->
 
@@ -854,20 +889,161 @@ ggplot(cases_deaths) +
   theme(legend.position = c(0.20, 0.85))
 ```
 
+\newpage
+\blandscape
+
+```{r, fig.width=11, fig.height=7, dailydeathscases, fig.cap = "Daily cases, deaths and % positive and 7 day rolling average. Daily % positive refers to the percentage of people testing positive out of the total number of people tested each day."}
+
+fig1 <- scot_data %>%
+  select(new_cases, date) %>%
+  mutate(rolling_av = zoo::rollmean(new_cases, k = 7, align = "right", fill = NA)) %>%
+  mutate(rolling_sum = roll_sumr(new_cases, n = 7)) %>% 
+ggplot() + 
+  geom_bar(aes(x = date, y = new_cases), stat = "identity", colour = "white", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av), colour = "red") +
+  scale_x_date(date_breaks = "3 weeks", labels = date_format("%b %d"),
+               limits = c(ymd("2020-02-29"), NA)) +
+  labs(x = "Date", y = "New Cases") +
+  theme_bw(base_size = 10)
+
+fig1_inset <- scot_data %>%
+  select(new_cases, date) %>%
+  mutate(rolling_av = zoo::rollmean(new_cases, k = 7, align = "right", fill = NA)) %>%
+  mutate(rolling_sum = roll_sumr(new_cases, n = 7)) %>% 
+  filter(date >= max(scot_data$date)-20) %>%
+ggplot() + 
+  geom_bar(aes(x = date, y = new_cases), stat = "identity", colour = "white", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av), colour = "red") +
+  #scale_y_continuous(name = 'New Cases', sec.axis = sec_axis(~.*ymax, 
+  #                                                                 name = "7 day rolling sum")) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  theme_bw(base_size = 10) +
+  labs( x = "", y = "") +
+  theme_bw(base_size = 10) +
+  theme(legend.position = "none") 
+
+fig1 <- ggdraw() +
+  draw_plot(fig1) +
+  draw_plot(fig1_inset, x = 0.49, y = .54, width = .43, height = .33) 
+
+
+fig2 <- scot_deaths %>%
+  select(new_deaths, date) %>%
+  mutate(rolling_av = zoo::rollmean(new_deaths, k = 7, align = "right", fill = NA)) %>%
+  mutate(rolling_sum = roll_sumr(new_deaths, n = 7)) %>% 
+ggplot() + 
+  geom_bar(aes(x = date, y = new_deaths), stat = "identity", colour = "white", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av), colour = "red") +
+  scale_x_date(date_breaks = "3 weeks", labels = date_format("%b %d"),
+               limits = c(ymd("2020-02-29"), NA)) +
+  labs(x = "Date", y = "New Deaths (Source: HPS)") +
+  theme_bw(base_size = 10)
+
+fig2_inset <- scot_deaths %>%
+  select(new_deaths, date) %>%
+  mutate(rolling_av = zoo::rollmean(new_deaths, k = 7, align = "right", fill = NA)) %>%
+  mutate(rolling_sum = roll_sumr(new_deaths, n = 7)) %>% 
+  filter(date >= max(scot_deaths$date)-20) %>%
+ggplot() + 
+  geom_bar(aes(x = date, y = new_deaths), stat = "identity", colour = "white", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av), colour = "red") +
+  #scale_y_continuous(name = 'New Cases', sec.axis = sec_axis(~.*ymax, 
+  #                                                                 name = "7 day rolling sum")) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  theme_bw(base_size = 10) +
+  labs( x = "", y = "") +
+  theme_bw(base_size = 10) +
+  theme(legend.position = "none") 
+
+fig2 <- ggdraw() +
+  draw_plot(fig2) +
+  draw_plot(fig2_inset, x = 0.49, y = .54, width = .43, height = .33)
+
+
+fig3 <- nrs_deaths_covid_raw_daily %>%
+  select(new_deaths, date) %>%
+  mutate(rolling_av = zoo::rollmean(new_deaths, k = 7, align = "right", fill = NA)) %>%
+  mutate(rolling_sum = roll_sumr(new_deaths, n = 7)) %>% 
+ggplot() + 
+  geom_bar(aes(x = date, y = new_deaths), stat = "identity", colour = "white", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av), colour = "red") +
+  #scale_y_continuous(name = 'New Cases', sec.axis = sec_axis(~.*ymax, 
+ #                                                                  name = "7 day rolling sum")) +
+  scale_x_date(date_breaks = "3 weeks", labels = date_format("%b %d"),
+               limits = c(ymd("2020-02-29"), max(scot_deaths$date))) +
+  labs(x = "Date", y = "New Deaths (Source: NRS)") +
+  theme_bw(base_size = 10)
+
+fig3_inset <- nrs_deaths_covid_raw_daily %>%
+  select(new_deaths, date) %>%
+  mutate(rolling_av = zoo::rollmean(new_deaths, k = 7, align = "right", fill = NA)) %>%
+  mutate(rolling_sum = roll_sumr(new_deaths, n = 7)) %>% 
+  filter(date >= max(nrs_deaths_covid_raw_daily$date)-20) %>%
+ggplot() + 
+  geom_bar(aes(x = date, y = new_deaths), stat = "identity", colour = "white", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av), colour = "red") +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  theme_bw(base_size = 10) +
+  labs( x = "", y = "") +
+  theme_bw(base_size = 10) +
+  theme(legend.position = "none") 
+
+fig3 <- ggdraw() +
+  draw_plot(fig3) +
+  draw_plot(fig3_inset, x = 0.49, y = .54, width = .43, height = .33) 
+
+fig4 <- scot_tests %>%
+  select(positive_perc, date) %>%
+  mutate(rolling_av = zoo::rollmean(positive_perc, k = 7, align = "right", fill = NA)) %>%
+  mutate(rolling_sum = roll_sumr(positive_perc, n = 7)) %>% 
+ggplot() + 
+  geom_bar(aes(x = date, y = positive_perc), stat = "identity", colour = "white", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av), colour = "red") +
+  scale_x_date(date_breaks = "3 weeks", labels = date_format("%b %d"),
+               limits = c(ymd("2020-02-29"), max(scot_deaths$date))) +
+  labs(x = "Date", y = "Daily % positive") +
+  theme_bw(base_size = 10)
+
+fig4_inset <- scot_tests %>%
+  select(positive_perc, date) %>%
+  mutate(rolling_av = zoo::rollmean(positive_perc, k = 7, align = "right", fill = NA)) %>%
+  mutate(rolling_sum = roll_sumr(positive_perc, n = 7)) %>% 
+  filter(date >= max(scot_tests$date)-20) %>%
+ggplot() + 
+  geom_bar(aes(x = date, y = positive_perc), stat = "identity", colour = "white", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av), colour = "red") +
+  #scale_y_continuous(name = 'New Cases', sec.axis = sec_axis(~.*ymax, 
+  #                                                                 name = "7 day rolling sum")) +
+  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d")) +
+  theme_bw(base_size = 10) +
+  labs( x = "", y = "") +
+  theme_bw(base_size = 10) +
+  theme(legend.position = "none",
+        plot.margin = margin(-0.1, -0.1, -0.1, -0.1, "cm")) 
+
+
+fig4 <- ggdraw() +
+  draw_plot(fig4) +
+  draw_plot(fig4_inset, x = 0.49, y = .54, width = .43, height = .33) 
+
+fig1 + fig2 + fig4 + fig3 
+```
+
+
 \hfill \break
 
-```{r dailydeathscases, fig.width=8, fig.height=5.4, fig.cap = "Daily cases and deaths and 7 day rolling sum"}
+```{r dailydeathscasesold, fig.width=8, fig.height=5.4, fig.cap = "Daily cases and deaths and 7 day rolling sum", eval = FALSE}
 
 ymax <- 8
 fig1 <- scot_data %>%
   select(new_cases, date) %>%
-  mutate(rolling_sum = roll_sumr(new_cases, n = 7)) %>%
+  mutate(rolling_sum = roll_sumr(new_cases, n = 7)) %>% 
 ggplot() + 
   geom_bar(aes(x = date, y = new_cases), stat = "identity", colour = "white", size = 0.2) +
   geom_line(aes(x = date, y = rolling_sum/ymax), colour = "red") +
   scale_y_continuous(name = 'New Cases', sec.axis = sec_axis(~.*ymax, 
                                                                    name = "7 day rolling sum")) +
-  scale_x_date(date_breaks = "2 week", labels = date_format("%b %d"),
+  scale_x_date(date_breaks = "3 weeks", labels = date_format("%b %d"),
                limits = c(ymd("2020-02-29"), NA)) +
   labs(x = "Date") +
   theme_bw(base_size = 10)
@@ -882,7 +1058,7 @@ ggplot() +
   geom_line(aes(x = date, y = rolling_sum/ymax), colour = "red") +
   scale_y_continuous(name = 'New Deaths (Source: HPS)', sec.axis = sec_axis(~.*ymax, 
                                                                    name = "7 day rolling sum")) +
-  scale_x_date(date_breaks = "2 week", labels = date_format("%b %d"), 
+  scale_x_date(date_breaks = "3 weeks", labels = date_format("%b %d"), 
                limits = c(ymd("2020-03-11"), NA)
                ) +
   labs(x = "Date") +
@@ -900,7 +1076,7 @@ ggplot() +
   geom_line(aes(x = date, y = rolling_sum/ymax), colour = "red") +
   scale_y_continuous(name = 'New Deaths (Source: NRS)', sec.axis = sec_axis(~.*ymax, 
                                                                    name = "7 day rolling sum")) +
-  scale_x_date(date_breaks = "2 week", labels = date_format("%b %d"), 
+  scale_x_date(date_breaks = "3 weeks", labels = date_format("%b %d"), 
                limits = c(ymd("2020-03-11"), NA)) +
   labs(x = "Date") +
   theme_bw(base_size = 10)
@@ -908,10 +1084,12 @@ fig1 + fig2 + plot_spacer() + fig3
 ```
 
 
-```{r dailyoccupancy, fig.width=6, fig.height=2.2, fig.cap="Number of patients in hospital and ICU at midnight. Daily totals include both confirmed and suspected COVID-19 cases for ICU, but only confirmed cases for the total hospital in-patients"}
+```{r dailyoccupancy, fig.width=9, fig.height=5, fig.cap="Number of patients in hospital and ICU at midnight. Daily totals include both confirmed and suspected COVID-19 cases for ICU, but only confirmed cases for the total hospital in-patients"}
 fig6 <- data_hosp %>%
+  mutate(rolling_av = zoo::rollmean(Hospital_total, k = 7, align = "right", fill = NA)) %>%
   ggplot() + 
-  geom_bar(aes(x = date, y = Hospital_confirmed), stat = "identity", colour = "white", size = 0.2) +
+  geom_bar(aes(x = date, y = Hospital_total), stat = "identity", colour = "white", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av), colour = "red") +
   scale_x_date(date_breaks = "3 week", labels = date_format("%b %d"), 
                limits = c(ymd("2020-03-11"),NA)) +
   #scale_fill_manual(values = viridis(3, option = "D")[c(2,3,1)]) + 
@@ -922,8 +1100,10 @@ fig6 <- data_hosp %>%
   theme(plot.margin = unit(c(0,20,0,0), "pt"))
 
 fig7 <- data_hosp %>%
+  mutate(rolling_av = zoo::rollmean(ICU_total, k = 7, align = "right", fill = NA)) %>%
   ggplot() + 
   geom_bar(aes(x = date, y = ICU_total), stat = "identity", colour = "white", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av), colour = "red") +
   scale_x_date(date_breaks = "3 week", labels = date_format("%b %d"), 
                limits = c(ymd("2020-03-11"), NA)) +
   theme_bw(base_size = 10) +
@@ -936,6 +1116,8 @@ fig7 <- data_hosp %>%
 fig6 + fig7
 #gridExtra::grid.arrange(fig2, fig1, nrow = 1) 
 ```
+
+\elandscape
 
 
 ```{r deathscaseshospicuold, fig.width=5.5, fig.height= 9, fig.cap="Weekly ratios for new cases and new deaths are ratios of weekly sums, plotted on a log10 scale. Day-of-the-week ratios for patients in hospital and ICU are ratios of daily counts, measured 7 days apart and plotted on a log10 scale. Figure insets highlight ratios and trends for the last 21 days.", eval = FALSE}
@@ -1096,11 +1278,10 @@ gridExtra::grid.arrange(fig1, fig2, fig4, fig3, nrow = 4)
 ```
 
 
-\newpage
 \thispagestyle{empty}
 
 
-```{r deathscaseshospicu, fig.width=5.5, fig.height= 9, fig.cap="Weekly ratios for new cases and new deaths are ratios of weekly sums, plotted on a log10 scale. Day-of-the-week ratios for patients in hospital and ICU are ratios of daily counts, measured 7 days apart and plotted on a log10 scale. Entries in grey are adjusted for public holiday effects, see Caveats. Figure insets highlight ratios and trends for the last 21 days."}
+```{r deathscaseshospicu, fig.width=5.5, fig.height= 8.2, fig.cap="Weekly ratios for new cases and new deaths are ratios of weekly sums, plotted on a log10 scale. Day-of-the-week ratios for patients in hospital and ICU are ratios of daily counts, measured 7 days apart and plotted on a log10 scale. Entries in grey are adjusted for public holiday effects, see Caveats. Figure insets highlight ratios and trends for the last 21 days."}
 
 fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020"))) +
   aes(x = date, y = ratio,
@@ -1109,12 +1290,13 @@ fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("23-03-2020
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_blue) +
   geom_point(colour = nice_blue, size = 1) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
                limits = c(dmy("23-03-2020"), NA)) +
   scale_y_continuous(trans = "log10",
                          breaks = c(0.5, 1,3,6),
+                         limits = c(NA, 10),
                          #labels = c(0.5, 1,3,6),
-                         expand = expansion(mult = 0.1), limits = c(NA,7)) +
+                         expand = expansion(mult = 0.1)) +
   labs( x = "End Date of Current Week",
         y = "Weekly Ratio",
         #title = "Change in weekly cases/deaths total as ratio of previous week",
@@ -1138,7 +1320,7 @@ fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) &
 
 fig1 <- ggdraw() +
   draw_plot(fig1) +
-  draw_plot(fig1_inset, x = 0.51, y = .55, width = .44, height = .29)
+  draw_plot(fig1_inset, x = 0.51, y = .59, width = .44, height = .24)
 
 
 fig2 <- ggplot(wk_gr_newdeaths_adj_mainplot %>% filter(!is.na(ratio) & 
@@ -1149,12 +1331,15 @@ fig2 <- ggplot(wk_gr_newdeaths_adj_mainplot %>% filter(!is.na(ratio) &
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(aes(colour = line, group = 1)) +
   geom_point(size = 1, aes(colour = ci)) +
-  scale_y_continuous(trans = "log10",
+  scale_y_continuous(trans = "pseudo_log",
                          expand = expansion(mult = 0.1),
-                     breaks = c(0.5, 1,3,10,30),
+                     breaks = c(0.1, 0.5, 1,3,10,30, 60),
+                     limits = c(NA, 60),
                      #labels = c(0.5, 1,3,10,30)
                      ) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+  geom_text(aes(x = date, label = symbol), y =0.5, colour = "#009E73") +
+  #scale_x_date(date_labels = "%b %d", date_breaks = "1 week") +
+  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
                limits = c(dmy("23-03-2020"), NA)) +
   scale_colour_manual(values = c("grey50", nice_red)) +
   scale_fill_manual(values = c("grey50", nice_red)) +
@@ -1175,7 +1360,7 @@ fig2_inset <- ggplot(wk_gr_newdeaths_adj_mainplot %>% filter(!is.na(ratio) &
   geom_point(size = 1, aes(colour = ci)) +
   scale_x_date(date_breaks = "10 days", labels = date_format("%b %d")#,expand = expansion(mult = 0.1)
                ) +
-  scale_colour_manual(values = c("grey50", nice_red)) +
+  scale_colour_manual(values = c(nice_red, "grey50")) + #CHANGE
   scale_fill_manual(values = c("grey50", nice_red)) +
     scale_y_continuous(trans = "log10") +
   labs( x = "",
@@ -1225,7 +1410,7 @@ fig2_inset <- ggplot(wk_gr_newdeaths_adj_mainplot %>% filter(!is.na(ratio) &
 
 fig2 <- ggdraw() +
   draw_plot(fig2) +
-  draw_plot(fig2_inset, x = 0.51, y = .54, width = .44, height = .3)
+  draw_plot(fig2_inset, x = 0.5, y = .60, width = .44, height = .24)
 
 
 fig3 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
@@ -1238,9 +1423,10 @@ fig3 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) &
   geom_point(colour = nice_green, size = 1) +
   scale_y_continuous(trans = "log10",
                      breaks = c(0.8, 1,2, 3),
+                     limits = c(NA, 4),
                      #labels = c(0.8, 1,2, 3),
                      expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
                limits = c(dmy("23-03-2020"), NA)) +
   labs( x = "Current Date",
         y = "Day-Of-The-Week Ratio",
@@ -1265,7 +1451,7 @@ fig3_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) &
 
 fig3 <- ggdraw() +
   draw_plot(fig3) +
-  draw_plot(fig3_inset, x = 0.51, y = .54, width = .44, height = .3)
+  draw_plot(fig3_inset, x = 0.5, y = .55, width = .44, height = .24)
 
 fig4 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
               !is.infinite(ratio_m) & date >= dmy("23-03-2020"))) +
@@ -1276,10 +1462,11 @@ fig4 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) &
   geom_line(colour = nice_orange) +
   geom_point(colour = nice_orange, size = 1) +
   scale_y_continuous(trans = "log10",
-                         breaks = c(0.5, 1, 3, 10),
+                         breaks = c(0.2, 0.5, 1, 3, 10, 30),
                          #labels = c(0.5, 1, 3, 10),
+                         limits = c(NA, 40),
                          expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "1 week", labels = date_format("%b %d"),
+  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
                limits = c(dmy("23-03-2020"), NA)) +
   labs( x = "Current Date",
         y = "Day-Of-The-Week Ratio",
@@ -1306,7 +1493,7 @@ fig4_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) &
 
 fig4 <- ggdraw() +
   draw_plot(fig4) +
-  draw_plot(fig4_inset, x = 0.51, y = .54, width = .44, height = .3)
+  draw_plot(fig4_inset, x = 0.51, y = .60, width = .44, height = .24)
 
 
 gridExtra::grid.arrange(fig1, fig2, fig3, fig4, nrow = 4) 
@@ -1439,7 +1626,7 @@ ggplot(aes(x = Location2, y = ratio_m,
 
 ggdraw() +
   draw_plot(fig1) +
-  draw_plot(fig1_inset, x = 0.4, y = .48, width = .23, height = .35)
+  draw_plot(fig1_inset, x = 0.35, y = .53, width = .23, height = .35)
 ```
 
 
@@ -1525,7 +1712,7 @@ fig1<- ggplot(wk_gr_newdeaths_nrs_hps %>% filter(!is.na(ratio) & date >= dmy("23
   geom_point(data = nrs_adj, size = 0.6, aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
   geom_line(data = nrs_adj, aes(x = date, y = ratio_m), colour = "grey51", show.legend = FALSE) +
   scale_y_continuous(trans = "log10",
-                     breaks = c(0.5, 1,3,10,30),
+                     breaks = c(0.2, 0.5, 1,3,10,30),
                      expand = expansion(mult = 0.1)) +
   labs( x = "End Date of Current Week",
         y = "Weekly ratio",
@@ -1558,7 +1745,7 @@ fig1_inset <- ggplot(wk_gr_newdeaths_nrs_hps %>% filter(!is.na(ratio) &
 
 ggdraw() +
   draw_plot(fig1) +
-  draw_plot(fig1_inset, x = 0.35, y = .47, width = .50, height = .42) 
+  draw_plot(fig1_inset, x = 0.35, y = .52, width = .50, height = .38) 
 ```
 
 
@@ -1698,7 +1885,7 @@ ggplot(bind_rows(scot_deaths %>% mutate(Source = "HPS"), nrs_deaths_covid_raw_da
   theme_bw(base_size = 12)
 ```
 
-```{r cases, fig.width=8, fig.height = 9, fig.cap="Daily cases and 7-day rolling sums by health board. Numbers are published as cumulative cases and only shown when higher than 4, making the first entry for each health board artificially high."}
+```{r cases, fig.width=8, fig.height = 9, fig.cap="Daily cases and 7-day rolling sums by health board. Numbers are published as cumulative cases and only shown when higher than 4, meaning the first few entries for each health board will be missing making the first entry shown for each health board artificially high."}
 ymax <- 3  
 hb_cases %>% 
   filter(date >= dmy("1/3/2020")) %>%
@@ -1714,7 +1901,7 @@ ggplot(    aes(x = date, y = new_cases,
         title = "New Cases (Source: HPS)") +
   scale_y_continuous(name = 'New Cases', sec.axis = sec_axis(~.*ymax, 
                                                                    name = "7 day rolling sum")) +
-  scale_x_date(date_breaks = "2 week", labels = date_format("%d %b")) +
+  scale_x_date(date_breaks = "2 weeks", labels = date_format("%d %b")) +
   #https://mokole.com/palette.html
   scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
                                "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
@@ -1745,7 +1932,7 @@ ggplot(nrs_deaths_covid_hb %>% filter(week_ending >= dmy("1/3/2020")),
 ```
 
 ```{r hospital, fig.width=8,fig.height=10,fig.cap="Patients in hospital with confirmed COVID-19 by health board. * denotes a value of less than 5."}
-hb_hosp_conf %>% 
+hb_hosp_total %>% 
   filter(date >= dmy("1/3/2020")) %>%
 mutate(symbol = case_when(Hosp_confirmed_or == "*" ~ "*")) %>%
 ggplot(aes(x = date, y = Hosp_confirmed,
@@ -1787,7 +1974,7 @@ ggplot(aes(x = date, y = ICU_total,
 \newpage
 \blandscape
 
-```{r fig.height=6.5, fig.width=10, fig.cap="Weekly and day-of-the-week ratios over the last 3 weeks by health board"}
+```{r hb3, fig.height=6.5, fig.width=10, fig.cap="Weekly and day-of-the-week ratios over the last 3 weeks by health board"}
 labellers <- c("Lothian" = "Lothian",
                                             "Grampian" = "Grampian",
                                             "Greater Glasgow & Clyde" = "Greater \nGlasgow \n& Clyde",
@@ -1940,7 +2127,9 @@ ggplot(aes(x = date_plot, y = ratio_m,
 
 library(ggpubr)
 
-ggarrange(ratio_cases_3, ratio_deaths_3, ratio_hosp_3, ratio_icu_3, ncol = 2, nrow = 2)
+ggarrange(ratio_cases_3, ratio_deaths_3, ratio_hosp_3,
+          #ratio_icu_3, 
+          ncol = 2, nrow = 2)
 ```
 
 
@@ -2134,10 +2323,9 @@ d <- ggdraw() +
 fig <- ggarrange(a, b, c, d, ncol = 2, nrow = 2)
 fig <- annotate_figure(fig,
                top = text_grob({i}, color = "red", face = "bold", size = 14),
-               bottom = stringr::str_glue("Figure 12.", {which(sort(health_boards)==i)},":"," Weekly ratios for new cases & new deaths and day-of-the-week ratios for patients in hospital & ICU \nfor ", {i} ," with other health boards shown in grey.", " Figure insets highlight ratios and trends for the last 21 days. \n* denotes ratios where there has been at least one case in the past week but none in the previous week."))
+               bottom = stringr::str_glue("Figure 12.", {which(sort(health_boards)==i)},":"," Weekly ratios for new cases & new deaths and day-of-the-week ratios for patients in hospital & ICU \nfor ", {i} ," with other health boards shown in grey. ","* denotes ratios where there has been at least one case in \nthe past week but none in the previous week (cases and deaths), or 5+ in the past week but <5 in the previous week \n(hospital and ICU in-patients). Figure insets highlight ratios and trends for the last 21 days."))
 print(fig)
 cat('\r\n\r\n')
-
 }
 
 ```

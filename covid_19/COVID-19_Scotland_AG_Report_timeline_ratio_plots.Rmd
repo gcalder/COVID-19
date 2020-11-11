@@ -622,6 +622,58 @@ wk_gr_nps_nrs <- wk_gr_nps_nrs %>%
                                               Location == "All" ~ "NRS",
                                              TRUE ~ Location))
 
+# Import Age group data
+data_agr <- read_csv("https://www.opendata.nhs.scot/dataset/b318bddf-a4dc-4262-971f-0ba329e09b87/resource/9393bd66-5012-4f01-9bc5-e7a10accacf4/download/trend_agesex_20201105.csv")
+
+data_agr_total <- data_agr %>%
+  filter(Sex == "Total" & AgeGroup != "Total") %>%
+  mutate(date = lubridate::ymd(Date)) %>%
+  select(-Date) %>%
+  rename("new_cases" = "DailyPositive", 
+         "confirmed_cases" = "CumulativePositive",
+         "new_deaths" = "DailyDeaths",
+         "deaths" = "CumulativeDeaths")
+
+# data_agr_total %>%
+#   group_by(date) %>%
+#   summarise(total_new = sum(new_cases)) %>%
+#   arrange(desc(date)) %>%
+#   slice(1:60) %>% View()
+
+wk_gr_newcases_agr <- data_agr_total %>% rename("outcome" = new_cases) %>%
+  arrange(date) %>%
+  group_by(AgeGroup) %>%
+  nest() %>%
+  mutate(gr = map(data, ~weekly_ratios(.x))) %>%
+  unnest(gr) %>%
+  filter(date >= ymd("2020-03-23")) %>%
+  filter(!is.na(ratio) & !is.infinite(ratio))  %>%
+  significance_wk() 
+
+
+wk_gr_newcases_agr_plt <- wk_gr_newcases_agr %>% filter(date >= dmy("1/09/2020") & date < max(wk_gr_newcases_agr$date)-3)
+ggplot(wk_gr_newcases_agr_plt) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci, colour = AgeGroup) +
+  geom_errorbar(width = 0, alpha = 0.4) +
+  geom_hline(yintercept = 1, linetype = "dashed", size = 0.2) +
+  geom_line() +
+  geom_point( size = 1) +
+  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d")) +
+  scale_y_continuous(trans = "log10",
+                     #limits = c(0.5,8),
+expand = expansion(mult = 0.1)) +
+  scale_color_brewer(palette = "Dark2") +
+  labs( x = "End Date of Current Week",
+        y = "Weekly Ratio",
+        #title = "Change in weekly cases/deaths total as ratio of previous week",
+        subtitle = "New Cases (Source: PHS)") +
+  theme_bw(base_size = 10) +
+  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm")) +
+    coord_cartesian(ylim=c(min(wk_gr_newcases_agr_plt$ratio_m)*0.8, max(wk_gr_newcases_agr_plt$ratio_m)*1.4))
+
+ggsave("weekly_ratios_cases_age_group_ci.png", width = 9, height = 6, units = "in", dpi = 200)
+ggsave("weekly_ratios_cases_age_group_noci.png", width = 9, height = 6, units = "in", dpi = 200)
 
 # Import CA data
 data_ca <- read_csv("https://www.opendata.nhs.scot/dataset/b318bddf-a4dc-4262-971f-0ba329e09b87/resource/427f9a25-db22-4014-a3bc-893b68243055/download/trend_ca_20201027.csv")
@@ -632,7 +684,7 @@ data_ca <- read_csv("https://www.opendata.nhs.scot/dataset/b318bddf-a4dc-4262-97
 #ca_map <- filter(ca_map, geo_label %in% unique(data_ca$CAName))
 #ca_map_simp <- st_simplify(ca_map, preserveTopology = TRUE, dTolerance = 1000)
 
-ca_pop <- read_csv("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/council-area-profiles-dataset-with-copyright/council-area-profiles-dataset-with-copyright_population-estimates.csv") %>%
+ca_pop <- read_csv("council-area-profiles-dataset-with-copyright/council-area-profiles-dataset-with-copyright_population-estimates.csv") %>%
   filter(Year == 2019)
 
 ca_pop <- ca_pop %>%
@@ -1819,7 +1871,6 @@ geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
   scale_y_continuous(trans = "log10",
                          breaks = c(0.5, 1,2,3, 6),
                          limits = c(NA, 10),
-                         #labels = c(0.5, 1,3,6),
                          expand = expansion(mult = 0.1)) +
   labs( x = "End Date of Current Week",
         y = "Weekly Ratio",
@@ -1828,6 +1879,54 @@ geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
   theme_bw(base_size = 10) +
   theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm"))
 fig1
+
+df_school_hols <- data.frame(start = c(dmy("14/09/2020"), dmy("05/10/2020")), end = c(dmy("28/09/2020"), dmy("26/10/2020")), ymin=-Inf, ymax = Inf)
+
+
+
+fig1_shade <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("3-09-2020"))) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci) +
+  geom_rect(xmin=dmy("14/09/2020"), xmax=dmy("28/09/2020"), ymin=-Inf, ymax=Inf, fill = "thistle2",alpha =0.02 ) +
+  geom_rect(xmin=dmy("5/10/2020"), xmax=dmy("26/10/2020"), ymin=-Inf, ymax=Inf, fill = "thistle2",alpha = 0.02) +
+  geom_vline(xintercept=(dmy("29/8/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
+  annotate("text",label = "Schools re-open (Aug 11)",y = 3.2, x = dmy("29/8/2020"), angle=90, size = 3, vjust= -0.5) +
+  geom_segment(aes(x = dmy("29/8/2020"), y = 9.5, xend = dmy("27/8/2020"), yend = 9.5),
+                  arrow = arrow(length = unit(0.1, "cm"))) +
+  geom_vline(xintercept=(dmy("1/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
+  annotate("text",label = "Local restrictions",y = 4, x = dmy("1/9/2020"), angle=90, size = 3, vjust= -0.5) +  
+  geom_vline(xintercept=(dmy("13/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
+  annotate("text",label = "Universities re-open",y = 4, x = dmy("13/9/2020"), angle=90, size = 3, vjust= -0.5) +
+  geom_vline(xintercept=(dmy("14/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
+  annotate("text",label = "Rule of 6",y = 4, x = dmy("14/9/2020"), angle=90, size = 3, vjust= 1.5) +  
+  geom_vline(xintercept=(dmy("25/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
+  annotate("text",label = "Pubs to close early",y = 4, x = dmy("25/9/2020"), angle=90, size = 3, vjust= -0.5) +
+  geom_vline(xintercept=(dmy("9/10/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
+  annotate("text",label = "Hospitality & \nCentral Belt restrictions",y = 4, x = dmy("9/10/2020"), angle=90, size = 3, vjust= -0.2, lineheight = 1) +geom_vline(xintercept=(dmy("2/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
+  annotate("text",label = "Tier system",y = 4, x = dmy("2/11/2020"), angle=90, size = 3, vjust= -0.5) +  
+geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
+  geom_line(colour = nice_blue) +
+  geom_point(colour = nice_blue, size = 0.5) +
+  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
+               limits = c(dmy("27-08-2020"), NA), expand = c(0.015, 0)) +
+  scale_y_continuous(trans = "log10",
+                         breaks = c(0.5, 1,2,3, 6),
+                         limits = c(NA, 10),
+                         #labels = c(0.5, 1,3,6),
+                         expand = expansion(mult = 0.1)) +
+  labs( x = "End Date of Current Week",
+        y = "Weekly Ratio",
+        #title = "Change in weekly cases/deaths total as ratio of previous week",
+        subtitle = "New Cases (Source: PHS)") +
+  theme_bw(base_size = 10) +
+  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm"))
+
+
+fig1_shade
+
+ggsave("weekly_ratios_cases_timeline_school_closures_shade.png", fig1_shade, width = 9, height = 2.8, units = "in", dpi = 400)
+
 
 fig2 <- ggplot(wk_gr_newdeaths_adj_mainplot %>% filter(!is.na(ratio) & 
               !is.infinite(ratio) & date >= dmy("03-09-2020"))) +

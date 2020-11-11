@@ -1,0 +1,139 @@
+---
+title: "Epidemic Growth Rates"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+library(knitr)
+```
+
+# Introduction
+
+The R package **incidence** can estimate growth rate and its confidence interval based on: 
+
+* Incidence data, **excluding zeros**, can be modelled using log-linear regression of the form: `log(y) = r x t + b`
+
+* Where y is the incidence, r is the growth rate, t is the number of days since a specific point in time (typically the start of the outbreak), and b is the intercept.
+
+This gives the same result as the coefficient of Base R `glm(log(y) ~ t)`
+
+Additionally you can set the peak or estimate the peak and hence before and after growth rate. 
+
+More info: 
+
+https://f1000research.com/articles/8-139
+https://cran.r-project.org/web/packages/incidence/vignettes/overview.html
+
+
+# Demo
+
+## Incidence package
+
+```{r}
+#load packages
+library(tidyverse)
+library(incidence)
+library(readxl)
+
+#import data
+x <- read.csv("~/Documents/GitHub/COVID-19/covid_19/growth_rates/scot_cases.csv")
+x <- read_excel("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/COVID-19_Scotland_data_all_2020-04-15.xlsx")
+path <- "/Users/smazeri/Documents/GitHub/COVID-19/covid_19/COVID-19_Scotland_data_all_2020-04-15.xlsx"
+# Scottish cases data
+scot_data_raw <- read_excel(path, sheet = "Cases By Health Board", skip = 1)
+scot_data_raw <- filter(scot_data_raw, !Health_Board %in% c("Increase", "pIncrease")) %>%
+              rename(confirmed_cases= Total,
+                     Date = Health_Board) %>%
+              mutate(date = lubridate::ymd(Date)) %>%
+              select(-Date)
+  
+scot_data_raw$date[nrow(scot_data_raw)] <- scot_data_raw$date[nrow(scot_data_raw)-1] + days(1)
+#scot_data_raw$confirmed_cases[nrow(scot_data_raw)] <- 4565 ## REMOVE
+
+scot_data <- scot_data_raw %>%
+             mutate(new_cases = confirmed_cases - replace_na(lag(confirmed_cases),0)) %>%
+             mutate(doubling_time_week = 7*log(2)/log(confirmed_cases/replace_na(lag(confirmed_cases,7),0))) 
+
+
+
+
+#x$date <- lubridate::ymd(x$date)
+x <- subset(scot_data, date >= lubridate::ymd(max(scot_data$date)-days(7)))
+x <- scot_data
+# turn data.frame into incidence object
+# can group by location e.g health board
+inc <- as.incidence(x = x[,c("new_cases")], dates = x$date)
+#set.seed(345)
+#inc_b <- bootstrap(inc, randomise_groups = FALSE)
+# plot
+plot(inc, border = "white") + theme(legend.position = c(0.9, 0.7)) + add_incidence_fit(model_fit_inc)
+
+# fit model
+model_fit_inc <- fit(inc)
+
+# growth rate
+model_fit_inc$info$r
+
+# growth rate confidence interval
+model_fit_inc$info$r.conf
+```
+
+```{r}
+## Bootstrap results
+result <- data.frame(Iteration = NULL,
+           `Growth Rate` = NULL,
+           LCI_95 = NULL,
+           UCI_95 = NULL) 
+for (i in 1:1000){
+inc_b <- bootstrap(inc, randomise_groups = FALSE)
+model_fit_inc <- fit(inc_b)
+dat <- data.frame(Iteration = i,
+           `Growth Rate` = model_fit_inc$info$r
+           #LCI_95 = model_fit_inc$info$r.conf[1],
+           #UCI_95 = model_fit_inc$info$r.conf[2]
+           ) 
+
+result <- rbind(result, dat)
+}
+
+result %>%
+  pivot_longer(Growth.Rate:UCI_95, names_to = "Estimate", values_to = "Value") %>%
+  ggplot() +
+  geom_histogram(aes(x = Value, fill = Estimate)) + facet_grid(Estimate~.)
+
+quantile(result$Growth.Rate, probs = c(0.025, 0.975))
+
+ggplot(x) + geom_bar(aes(x = date, y = log(new_cases)), stat = "identity")
+```
+
+
+## Fit model with base R
+
+```{r}
+x$days_since <- x$date - min(x$date)
+model_fit <- lm(log(new_cases) ~ days_since, data = subset(x, new_cases >0))
+model_fit <- lm(log(confirmed_cases) ~ days_since, data = x)
+
+# growth rate is the coefficient of the variable days_since
+model_fit$coefficients[2]
+confint(model_fit)[2,]
+
+summary(model_fit)$r.squared
+```
+
+## Comparison of results as a sanity check
+
+```{r, echo=FALSE}
+data.frame(Method = c("Incidence pachage", "Base R"),
+           `Growth Rate` = c(model_fit_inc$info$r, model_fit$coefficients[2][[1]]),
+           LCI_95 = c(model_fit_inc$info$r.conf[1], confint(model_fit)[2,][[1]]),
+           UCI_95 = c(model_fit_inc$info$r.conf[2], confint(model_fit)[2,][[2]])) %>%
+  kable()
+```
+
+
+
+
