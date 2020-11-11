@@ -59,6 +59,7 @@ hb_pop <- read_csv("Scotland_Population_Size_By_HealthBoard.csv") %>%
 ## Covid daily hospital data
 myurl <- "https://www.gov.scot/binaries/content/documents/govscot/publications/statistics/2020/04/coronavirus-covid-19-trends-in-daily-data/documents/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/govscot%3Adocument/Trends%2Bin%2Bdaily%2BCOVID-19%2Bdata%2B-%2B110520.xlsx?forceDownload=true"
 #myurl <- "https://www.gov.scot/binaries/content/documents/govscot/publications/statistics/2020/04/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/documents/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/trends-in-number-of-people-in-hospital-with-confirmed-or-suspected-covid-19/govscot%3Adocument/Data%2BTable%2B%252810-04-2020%2529.xlsx?forceDownload=true"
+
 GET(myurl, write_disk(tmp_hps <- tempfile(fileext = ".xlsx")))
 GET(myurl, write_disk("hps_daily.xlsx", overwrite = TRUE))
 
@@ -108,6 +109,47 @@ data_hosp <- data_hosp %>%
 #                            "Hospital_suspected" = "Suspected")) %>%
 #   mutate(Patients = factor(Patients, levels = c("Confirmed/Suspected", "Suspected", "Confirmed")))
 
+GET(myurl, write_disk(tmp <- tempfile(fileext = ".xlsx")))
+GET(myurl, write_disk("hps_daily.xlsx", overwrite = TRUE))
+
+#data_hosp <- read_excel(tmp, sheet = "Table 1", skip = 3)
+data_hosp <- read_excel(tmp, sheet = "Table 2 - Hospital Care", skip = 3)
+#data_hosp <- filter(data_hosp, `...1` != Sys.Date()) # CHANGE
+
+data_hosp <- data_hosp %>%
+  rename("date" = "...1",
+         "ICU_confirmed" = "Confirmed...2",
+         "ICU_suspected" ="Suspected...3", 
+         "ICU_total" = "Total...4",
+         "Hospital_confirmed" = "Confirmed...5",
+         "Hospital_suspected" = "Suspected...6",
+         "Hospital_total" = "Total...7" ) %>%
+  filter(!is.na(ICU_total)) %>%
+  mutate(date = lubridate::ymd(date)) %>%
+  mutate(ICU_confsusp = case_when(is.na(ICU_confirmed) & is.na(ICU_suspected) ~ ICU_total)) %>%
+  mutate(Hospital_confsusp = case_when(is.na(Hospital_confirmed) & is.na(Hospital_suspected) ~ Hospital_total)) %>%
+  select(date, contains("ICU"), everything()) %>%
+  mutate(date = date - days(1))
+
+data_hosp_icu <- data_hosp %>%
+  select(date, contains("ICU")) %>%
+  pivot_longer(cols = c(ICU_confirmed, ICU_suspected, ICU_confsusp), names_to = "Patients", values_to = "Number") %>%
+  mutate(Patients = recode(Patients,  "ICU_confsusp" = "Confirmed/Suspected", 
+                           "ICU_confirmed" = "Confirmed", 
+                           "ICU_suspected" = "Suspected")) %>%
+  mutate(Patients = factor(Patients, levels = c("Confirmed/Suspected", "Suspected", "Confirmed")))
+
+
+
+data_hosp_hosp <- data_hosp %>%
+  select(date, contains("hospital")) %>%
+  pivot_longer(cols = c(Hospital_confirmed, Hospital_suspected, Hospital_confsusp), names_to = "Patients", values_to = "Number") %>%
+  mutate(Patients = recode(Patients,  "Hospital_confsusp" = "Confirmed/Suspected", 
+                           "Hospital_confirmed" = "Confirmed", 
+                           "Hospital_suspected" = "Suspected")) %>%
+  mutate(Patients = factor(Patients, levels = c("Confirmed/Suspected", "Suspected", "Confirmed")))
+>>>>>>> ef44e9c7d467125fb15c1557b9f60230fc3c7bc2
+
 wk_gr_hosp_icu <- data_hosp %>%
        mutate(ICU_prev = lag(ICU_total , 7), 
          weekdays(date)) %>%
@@ -135,7 +177,7 @@ wk_gr_hosp_hosp <- data_hosp %>%
        #pivot_longer(c(Hospital_total, Hosp_prev), names_to = "week", values_to = "number") %>%
       group_by(date) %>%
       nest() %>%
-      mutate(tab = map(data, ~ weekly_ratios_ci(.x$Hospital_total, .x$Hosp_prev))) %>%
+      mutate(tab = map(data, ~ weekly_ratios_ci(.x$Hospital_total, .x$Hosp_prev))) 
   mutate(ratio_m = map_dbl(tab, ~parse_number(as.character((.x[1,2]))))) %>% 
   mutate(lci = map_dbl(tab, ~parse_number(as.character((.x[2,2]))))) %>% 
   mutate(uci = map_dbl(tab, ~parse_number(as.character((.x[3,2]))))) %>% 
@@ -157,6 +199,7 @@ wk_gr_hosp_hosp <- data_hosp %>%
 wk_gr_hosp_hosp_latest <- filter(wk_gr_hosp_hosp, date == max(wk_gr_hosp_icu$date))
 
 # Import NRS data
+
 myurl_deaths <- "https://www.nrscotland.gov.uk/files//statistics/covid19/covid-deaths-data-week-32.xlsx"
 GET(myurl_deaths, write_disk(tmp <- tempfile(fileext = ".xlsx")))
 GET(myurl_deaths, write_disk("nrs.xlsx", overwrite = TRUE))
@@ -166,6 +209,7 @@ nrs_deaths_covid_raw <- read_excel(tmp, sheet = "Table 1 - COVID deaths", skip =
   select(-`Year to Date`) %>%
   rename("Details" = "...2",
          "Total" = "...36")
+
 
 nrs_deaths_covid <- nrs_deaths_covid_raw %>% filter(`Week beginning` == "Deaths involving COVID-194") %>%
   pivot_longer(cols = `43829`:names(nrs_deaths_covid_raw)[ncol(nrs_deaths_covid_raw)-1],
@@ -392,7 +436,7 @@ scot_deaths <- left_join(scot_deaths, scot_deaths_adj, by = "date") %>%
 #   
 # scot_tests_long <- scot_tests %>%
 # pivot_longer(cols = Positive:Negative, names_to = "Result", values_to = "Number") %>%
-# mutate(Result = factor(Result, levels = c("Positive", "Negative")))
+# mutate(Result = factor(Result, levels = c("Positive", "Negative")) 
 
 
 # Plot colours
@@ -459,6 +503,7 @@ wk_gr_newdeaths_adj <- scot_deaths %>% select(new_deaths_adj, date) %>%
               lci = case_when(date %in% public_hols_keep_ci ~ lci),
               uci = case_when(date %in% public_hols_keep_ci ~ uci)) %>%
        mutate(symbol = case_when(change_prev == 0 & change >0 ~ "*"))
+
 
 wk_gr_newdeaths_adj_mainplot <- scot_deaths %>% select(new_deaths_adj, date) %>%
       mutate(outcome = new_deaths_adj) %>%
@@ -633,6 +678,7 @@ wk_gr_newcases_hb <- hb_cases %>% rename("outcome" = new_cases) %>%
   filter(!is.na(ratio) & !is.infinite(ratio))  %>%
   significance_wk() 
 
+
 #HB ICU
 hb_icu <- read_excel(tmp, sheet = "Table 2 - ICU patients", skip = 2) %>%
            select(-`Scotland total`, -`Golden Jubilee National Hospital` ) %>%
@@ -681,6 +727,8 @@ wk_gr_hosp_icu_hb <- hb_icu %>%
 
 #HB HOSPITAL
 hb_hosp_conf <- read_excel(tmp, sheet = "Table 3 - Hospital patients", skip = 2) %>%
+  significance_wk() %>%
+  mutate(ratio_under_1 = ratio_m<1) %>%
                 select(-Scotland, -`Golden Jubilee National Hospital` ) %>%
                 mutate(date = lubridate::ymd(Date)) %>%
            select(-Date) %>%
@@ -715,6 +763,7 @@ hb_hosp_total <- hb_hosp_conf
 # hb_hosp_total <- left_join(hb_hosp_conf, hb_hosp_susp) %>%
 #                  mutate(Hosp_total = Hosp_confirmed + Hosp_suspected)
 
+
 hb_hosp_keep <- hb_hosp_conf %>%
   group_by(health_board) %>%
   summarise(prop_asterisk = sum(Hosp_confirmed_or=="*")/ n()) %>%
@@ -744,6 +793,7 @@ wk_gr_hosp_hosp_hb <- hb_hosp_conf %>%
 ```
 
 Numbers of new cases and new deaths, as reported by Health Protection Scotland (HPS), have been monitored on a daily basis (Figure \@ref(fig:dailydeathscases)). To assess the rate of spread of COVID-19 in Scotland, we have considered the ratio of the sum of these metrics in the past week compared to their respective sums in the previous week. A similar ratio has been used to measure changes in the number of patients in hospital by comparing daily numbers of patients in hospital and ICU to those one week ago. However, these statistics are potentially subject to biases and we list several caveats which should be considered when interpreting their values.
+
 
 
 \subsection*{Data}
@@ -835,6 +885,7 @@ The use of weekly ratios helps to smooth out variations occurring across week da
 
 The confidence intervals indicate the accuracy of the observed ratio of the two particular weeks considered. However, there are many factors which influence the ratios other than the true underlying rate of spread of COVID-19. Some of these will be systematic (as described in the above caveats) and others may be more random. The caveats should all be considered when interpreting the ratios, particularly when the confidence interval does not include 1. 
 
+
 The weekly ratios will be less accurate when numbers are smaller, particularly for ICU numbers and deaths, and when calculated separately for health boards (Figures \@ref(fig:hb3) and 12). If there have been no occurrences (or <5 for hospital/ICU numbers) then the ratio will be missing. However, ratios where there has been at least one case in the past week but none in the previous week (or 5+ in the past week but <5 in the previous week for hospital/ICU numbers), have been indicated in Figure 12 by an asterisk. When there have been no occurrences in the past week but one or more in the previous week, then the resulting zero ratios are shown. Low accuracy (and hence wide confidence intervals) is most noticeable in the early part of the epidemic and will become apparent again as numbers reduce. At this stage it will become difficult to accurately determine ratios and it may be necessary to use alternative strategies to monitor the epidemic.
 
 There is some analogy between the ratios presented and the R number, and values of less than 1 (or greater than 1) might be expected to correspond to R numbers of less than (or greater than) 1. While their values will not be identical, a rudimentary conversion based on a serial interval of 6.48 days (as used in the ICL model) indicates they would be similar. For example, a ratio of 0.70 would correspond to R=0.72, a ratio of 0.80 to R=0.813, and a ratio of 0.90 to R=0.91 (R=Ratio\textsuperscript{(6.48/7)}). However, this analogy assumes uniform reporting over the two week period used to calculate each ratio. Furthermore it should be borne in mind that each statistic reflects a different manifestation of the virus, and none are fully representative of the true underlying rate of spread of infection in the whole population. Death ratios are heavily influenced by the rate of spread to and within older age groups, and take less account of the rate of spread in younger age groups. Similarly cases and hospital in-patients predominantly include those with more severe symptoms, and so do not fully capture the rate of infection spread within the whole population. Nevertheless these statistics have clear value for monitoring the impact of the virus on health service requirements, and will still serve as broad indicators of the underlying rate of spread of the virus occurring 3-4 weeks earlier. 
@@ -888,6 +939,7 @@ ggplot(cases_deaths) +
   theme_bw(base_size = 12) +
   theme(legend.position = c(0.20, 0.85))
 ```
+
 
 \newpage
 \blandscape
@@ -1084,6 +1136,7 @@ fig1 + fig2 + plot_spacer() + fig3
 ```
 
 
+
 ```{r dailyoccupancy, fig.width=9, fig.height=5, fig.cap="Number of patients in hospital and ICU at midnight. Daily totals include both confirmed and suspected COVID-19 cases for ICU, but only confirmed cases for the total hospital in-patients"}
 fig6 <- data_hosp %>%
   mutate(rolling_av = zoo::rollmean(Hospital_total, k = 7, align = "right", fill = NA)) %>%
@@ -1276,6 +1329,7 @@ fig4 <- ggdraw() +
 
 gridExtra::grid.arrange(fig1, fig2, fig4, fig3, nrow = 4) 
 ```
+
 
 
 \thispagestyle{empty}
@@ -1974,7 +2028,9 @@ ggplot(aes(x = date, y = ICU_total,
 \newpage
 \blandscape
 
+
 ```{r hb3, fig.height=6.5, fig.width=10, fig.cap="Weekly and day-of-the-week ratios over the last 3 weeks by health board"}
+
 labellers <- c("Lothian" = "Lothian",
                                             "Grampian" = "Grampian",
                                             "Greater Glasgow & Clyde" = "Greater \nGlasgow \n& Clyde",
