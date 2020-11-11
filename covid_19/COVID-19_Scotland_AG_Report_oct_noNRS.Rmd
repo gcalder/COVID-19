@@ -77,15 +77,15 @@ data_hosp <- data_hosp %>%
              rename(ICU_total = `(i) COVID-19 patients in ICU\r\n or combined ICU/HDU`,
                     Hospital_total = `(ii) COVID-19 patients in hospital (including those in ICU)`) %>%
   filter(date < Sys.Date()) %>% #remove today's data
-  mutate(date = date - days(1))
+mutate(date = date - days(1))
 
 data_hosp_old <- data_hosp_old %>%
   rename(ICU_total = `Confirmed...2`, 
          Hospital_total = `Confirmed...5`) %>%
   mutate(date = ymd(`...1`)) %>%
   select(ICU_total, Hospital_total, date) %>%
-  filter(date < Sys.Date()) %>% #remove today's data
-  mutate(date = date - days(1)) %>%
+filter(date < Sys.Date()) %>% #remove today's data
+mutate(date = date - days(1)) %>%
   filter(date < min(data_hosp$date))
 
 data_hosp <- bind_rows(data_hosp_old, data_hosp)
@@ -315,9 +315,10 @@ scot_tests <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
   mutate(date = lubridate::ymd(Date)) %>%
   mutate(positive_perc = 100*new_cases/new_people_tested) %>%
   select(-Date) %>%
-  select(date, new_cases, new_people_tested, total_people_tested, positive_perc) %>%
+ select(date, new_cases, new_people_tested, total_people_tested, positive_perc) %>%
   filter(date < Sys.Date()) %>% #remove today's data
   mutate(date = date - days(1))
+
 
 
 scot_data <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
@@ -329,7 +330,7 @@ scot_data <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
   select(-Date) %>%
   select(date, new_cases, confirmed_cases) %>%
   filter(date < Sys.Date()) %>% #remove today's data
-  mutate(date = date - days(1))
+mutate(date = date - days(1))
 
 # PHS cases adjust bank holiday effect
 scot_data <- scot_data %>%
@@ -376,8 +377,8 @@ scot_deaths <- data_deaths %>%
   mutate(new_deaths = c(1,diff(deaths, 1)))
 
 scot_deaths <- scot_deaths %>%
-  filter(date < Sys.Date()) %>% #remove today's data
-  mutate(date = date - days(1))
+filter(date < Sys.Date()) %>% #remove today's data
+ mutate(date = date - days(1))
 
 
 # PHS deaths adjust bank holiday effect
@@ -662,11 +663,11 @@ wk_gr_newcases_agr <- data_agr_total %>% rename("outcome" = new_cases) %>%
 # Import CA data
 data_ca <- read_csv("https://www.opendata.nhs.scot/dataset/b318bddf-a4dc-4262-971f-0ba329e09b87/resource/427f9a25-db22-4014-a3bc-893b68243055/download/trend_ca_20201027.csv")
 
-ca_map <- sf::read_sf("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/infuse_dist_lyr_2011/infuse_dist_lyr_2011.shp")
-geo_label <- recode(ca_map$geo_label, "Edinburgh, City of" = "City of Edinburgh", 
-                                             "Eilean Siar" =   "Na h-Eileanan Siar")
-ca_map <- filter(ca_map, geo_label %in% unique(data_ca$CAName))
-ca_map_simp <- st_simplify(ca_map, preserveTopology = TRUE, dTolerance = 1000)
+# ca_map <- sf::read_sf("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/infuse_dist_lyr_2011/infuse_dist_lyr_2011.shp")
+# geo_label <- recode(ca_map$geo_label, "Edinburgh, City of" = "City of Edinburgh", 
+#                                              "Eilean Siar" =   "Na h-Eileanan Siar")
+# ca_map <- filter(ca_map, geo_label %in% unique(data_ca$CAName))
+# ca_map_simp <- st_simplify(ca_map, preserveTopology = TRUE, dTolerance = 1000)
 
 ca_pop <- read_csv("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/council-area-profiles-dataset-with-copyright/council-area-profiles-dataset-with-copyright_population-estimates.csv") %>%
   filter(Year == 2019)
@@ -692,8 +693,9 @@ data_ca <- data_ca %>%
   left_join(ca_pop, by = c("CAName" = "Council area")) %>%
   mutate(CAName = factor(CAName, levels = ca2hb$CA)) %>%
   mutate(new_cases_pop_100000 = 100000*new_cases/Pop,
-         new_deaths_pop_100000 = 100000*new_deaths/Pop) %>%
+new_deaths_pop_100000 = 100000*new_deaths/Pop) %>%
   filter(date < (Sys.Date()-days(1)))  #remove today's data
+
 
 wk_gr_newcases_ca <- data_ca %>% rename("outcome" = new_cases) %>%
   arrange(date) %>%
@@ -910,6 +912,7 @@ The number of COVID-19 patients in hospital and intensive care units (ICUs) is r
 We have used ratios of both cases and deaths in the past week compared to the previous week (i.e. the total over the last 7 days as a ratio of the total over the previous 7 days) to monitor the weekly rate of spread of COVID-19 (Figure \@ref(fig:deathscaseshospicu)<!--, \@ref(fig:ratiosnrshpsloc), \@ref(fig:ratiosnrshpsdaily)--> and Table \@ref(tab:tabdeathscaseshospicu)). Weekly totals are considered as they are less prone to week day variations than the daily values (see Caveats below).
 
 Ratios for patients in hospital are calculated as the number of patients in hospital (or ICU) on a given day compared to the number of patients in hospital (or ICU) one week before (e.g. the ratio for `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-lubridate::days(1)))` is ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-lubridate::days(1)))`’ divided by ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-8))`’).
+
 
 <!--Graphs of rates and ratios are provided separately for each Local Authority in Figures \@ref(fig:casespopla) to \@ref(fig:wkrtcasesla).
 -->
@@ -1519,6 +1522,7 @@ fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) &
   labs( x = "", y = "") +
   theme_bw(base_size = 8) +
   theme(plot.margin = margin(0, 0, -1, 0, "cm")) 
+
 fig1 <- ggdraw() +
   draw_plot(fig1) +
   draw_plot(fig1_inset, x = 0.50, y = .66, width = .44, height = .20)
@@ -1719,6 +1723,7 @@ gridExtra::grid.arrange(fig1, fig2, fig3, fig4, nrow = 4)
 ```{r tabdeathscaseshospicu}
 bind_rows(wk_gr_newcases %>% filter(date == max(wk_gr_newcases$date)) %>% mutate(Measure = "New Cases (Source: PHS)"),
 wk_gr_newdeaths %>% filter(date == max(wk_gr_newdeaths$date)) %>% mutate(Measure = "New Deaths (Source: PHS)"),
+
 wk_gr_hosp_hosp %>% filter(date == max(wk_gr_hosp_hosp$date)) %>% mutate(Measure = "Patients in Hospital (Source: NHS Boards)"),
 wk_gr_hosp_icu %>% filter(date == max(wk_gr_hosp_icu$date)) %>% mutate(Measure = "Patients in ICU (Source: NHS Boards)")
 ) %>%
@@ -1763,29 +1768,7 @@ expand = expansion(mult = 0.1)) +
 ```
 
 
-```{r deathsno, fig.width=8,fig.cap="Number of deaths per week, compared by location and data source", eval = FALSE}
-ggplot(bind_rows(wk_gr_nps_nrs, wk_gr_newdeaths_latest) %>%
-         mutate(Location = factor(Location, levels = c("PHS", "NRS","Care Home", "Hospital","Home / Non-institution"))) %>%
-         mutate(Location2 = recode_factor(Location, "PHS" = "PHS", 
-                                            "NRS" = "NRS all COVID-19 deaths",
-                                            "Care Home" = "Care Home (CH)", 
-                                            "Hospital" = "Hospital", 
-                                            "Home / Non-institution" = "Home / Non-institution (HN)")),
-  aes(x = date, y = change,
-    colour = Location2, fill = Location2)) +
-  geom_line(position=position_dodge(width=1)) +
-  geom_point(size = 1, position=position_dodge(width=1)) +
-  scale_y_continuous(trans = "log10",
-                     breaks = c(1,10,20,50,100,200,500,1000),
-                         expand = expansion(mult = 0.1)) +
-  labs( x = "Week Ending",
-        y = "Weekly Deaths",
-        title = "Weekly deaths by location and data source", 
-        colour = "Location/Source",
-        fill = "Location/Source") +
-  scale_colour_brewer(palette = "Dark2") +
-  theme_bw(base_size = 12)
-```
+
 
 ```{r weeklyratiosagegroup, fig.width=8,fig.cap="Ratio of new deaths during current week vs previous week, compared by age group. Data source: NRS", eval=FALSE}
 ggplot(wk_gr_nrs_deaths_age) +
@@ -1806,6 +1789,11 @@ ggplot(wk_gr_nrs_deaths_age) +
   scale_colour_brewer(palette = "Dark2") +
   theme_bw(base_size = 12)
 ```
+
+
+=======
+\newpage
+
 
 ```{r ratiosnrshpsloc, fig.width=8,fig.cap="Ratio of new deaths during current week vs previous week, compared by location and data source. Figure inset highlights the last date that both PHS and NRS data are available for.", eval = FALSE}
 
@@ -2292,6 +2280,7 @@ ggplot(data_ca) +
         axis.text = element_text(size = 6))
 ```
 
+
 \newpage
 \newgeometry{top=1.5cm,bottom=1.5cm, left=1cm, right=1cm}
 
@@ -2417,6 +2406,7 @@ ggplot() +
 ```
 
 
+
 ```{r deathspopla, fig.width=8.5,fig.height = 10.5, fig.cap="New daily deaths per 100,000 head of population, by local authority. 7 day rolling averages are displayed as a black line. The last 4 days of data are omitted in order to avoid under-reporting bias. Local authorities are colour coded by the health board in which they sit.", eval = FALSE}
 data_ca %>% filter(date >= dmy("1/9/2020") & date < max(data_ca$date)-3) %>%
 group_by(CAName) %>%
@@ -2470,6 +2460,7 @@ ggplot(wk_gr_newcases_ca %>% filter(date > max(data_ca$date)-25 & date < max(dat
 
 \restoregeometry
 
+
 ```{r, fig.width=7, fig.cap="Map showing weekly ratio by Local Authority", eval = FALSE}
 wk_gr_newcases_ca_4map <- wk_gr_newcases_ca %>% filter(date > max(data_ca$date)-7 & date < max(data_ca$date)-3)
 ca_map_simp2 <- ca_map_simp %>%
@@ -2494,8 +2485,6 @@ map1 <- ggplot(data = ca_map_simp2) +
 
 map1
 ```
-
-
 
 
 
