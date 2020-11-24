@@ -1,6 +1,9 @@
 library(tidyverse)
 library(lubridate)
 
+source("weekly_ratios_2.R")
+weekly_ratios <- weekly_ratios_2
+
 hols <- read_csv("School_Hols.csv") %>%
       mutate(Holiday1_Start = dmy(Holiday1_Start),
              Holiday1_End = dmy(Holiday1_End),
