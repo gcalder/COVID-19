@@ -1,5 +1,6 @@
 library(tidyverse)
 library(lubridate)
+library(RcppRoll)
 
 source("weekly_ratios_2.R")
 weekly_ratios <- weekly_ratios_2
