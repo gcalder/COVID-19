@@ -40,7 +40,7 @@ weekly_ratios <- weekly_ratios_2
 #source("weekly_ratios_byday.R")
 
 # Import healthboard pop data 
-hb_pop <- read_csv("Scotland_Population_Size_By_HealthBoard.csv") %>%
+hb_pop <- read_csv("/Users/gcalder2/OneDrive - University of Edinburgh/GitRepos/COVID-19/covid_19/Scotland_Population_Size_By_HealthBoard.csv") %>%
   select(Health_Board, Pop_Size) %>%
   slice(1:14) %>%
   mutate(health_board = str_replace(Health_Board, "and ", "& ")) %>%

@@ -76,14 +76,16 @@ data_hosp <- data_hosp %>%
              mutate(date = ymd(`Reporting Date`)) %>%
              rename(ICU_total = `(i) COVID-19 patients in ICU\r\n or combined ICU/HDU`,
                     Hospital_total = `(ii) COVID-19 patients in hospital (including those in ICU)`) %>%
-  mutate(date = date - days(1))
+  #filter(date < Sys.Date()) %>% #remove today's data
+mutate(date = date - days(1))
 
 data_hosp_old <- data_hosp_old %>%
   rename(ICU_total = `Confirmed...2`, 
          Hospital_total = `Confirmed...5`) %>%
   mutate(date = ymd(`...1`)) %>%
   select(ICU_total, Hospital_total, date) %>%
-  mutate(date = date - days(1)) %>%
+#filter(date < Sys.Date()) %>% #remove today's data
+mutate(date = date - days(1)) %>%
   filter(date < min(data_hosp$date))
 
 data_hosp <- bind_rows(data_hosp_old, data_hosp)
@@ -305,7 +307,8 @@ wk_gr_nrs_deaths_hb <- nrs_deaths_covid_hb %>%
 #              #mutate(doubling_time_week = 7*log(2)/log(confirmed_cases/replace_na(lag(confirmed_cases,7),0))) 
 
 scot_tests <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
-           rename("Date" = "...1") %>%
+           rename("Date" = "...1",
+                  "Posrate_PHS" = "...6") %>%
   rename(total_people_tested = Total) %>%
   mutate(new_people_tested = total_people_tested - lag(total_people_tested)) %>%
   mutate(new_cases = `Daily...5`) %>%
@@ -313,7 +316,10 @@ scot_tests <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
   mutate(date = lubridate::ymd(Date)) %>%
   mutate(positive_perc = 100*new_cases/new_people_tested) %>%
   select(-Date) %>%
-  select(date, new_cases, new_people_tested, total_people_tested, positive_perc) 
+ select(date, new_cases, new_people_tested, total_people_tested, positive_perc, Posrate_PHS) %>%
+  #filter(date < Sys.Date()) %>% #remove today's data
+  mutate(date = date - days(1))
+
 
 
 scot_data <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
@@ -324,7 +330,10 @@ scot_data <- read_excel(tmp_hps, sheet = "Table 5 - Testing", skip = 3) %>%
   mutate(date = lubridate::ymd(Date)) %>%
   select(-Date) %>%
   select(date, new_cases, confirmed_cases) %>%
-  mutate(date = date - days(1))
+  #filter(date < Sys.Date()) %>% #remove today's data
+mutate(date = date - days(1)) %>%
+  mutate(date = case_when(new_cases == 1118 & date == ymd("2020-11-12") ~ ymd("2020-11-13"),
+                          TRUE~ date))
 
 # PHS cases adjust bank holiday effect
 scot_data <- scot_data %>%
@@ -371,7 +380,8 @@ scot_deaths <- data_deaths %>%
   mutate(new_deaths = c(1,diff(deaths, 1)))
 
 scot_deaths <- scot_deaths %>%
-  mutate(date = date - days(1))
+#filter(date < Sys.Date()) %>% #remove today's data
+ mutate(date = date - days(1))
 
 
 # PHS deaths adjust bank holiday effect
@@ -443,6 +453,7 @@ public_hols_keep_line <- c(public_hols_keep_ci, public_hols_keep_ci-days(1)) %>%
 
 # Weekly Growth 
 wk_gr_newcases <- scot_data %>% select(new_cases, date) %>%
+      #filter(date %in% unique(scot_data$date)[1:257]) %>%
       mutate(outcome = new_cases) %>%
        weekly_ratios() %>%
        filter(!is.na(ratio) & !is.infinite(ratio)) %>%
@@ -633,7 +644,8 @@ data_agr_total <- data_agr %>%
   rename("new_cases" = "DailyPositive", 
          "confirmed_cases" = "CumulativePositive",
          "new_deaths" = "DailyDeaths",
-         "deaths" = "CumulativeDeaths")
+         "deaths" = "CumulativeDeaths") #%>%
+  #filter(date < (Sys.Date()-days(1))) #remove today's data
 
 # data_agr_total %>%
 #   group_by(date) %>%
@@ -652,40 +664,18 @@ wk_gr_newcases_agr <- data_agr_total %>% rename("outcome" = new_cases) %>%
   significance_wk() 
 
 
-wk_gr_newcases_agr_plt <- wk_gr_newcases_agr %>% filter(date >= dmy("1/09/2020") & date < max(wk_gr_newcases_agr$date)-3)
-ggplot(wk_gr_newcases_agr_plt) +
-  aes(x = date, y = ratio,
-    ymin = lci, ymax = uci, colour = AgeGroup) +
-  geom_errorbar(width = 0, alpha = 0.4) +
-  geom_hline(yintercept = 1, linetype = "dashed", size = 0.2) +
-  geom_line() +
-  geom_point( size = 1) +
-  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d")) +
-  scale_y_continuous(trans = "log10",
-                     #limits = c(0.5,8),
-expand = expansion(mult = 0.1)) +
-  scale_color_brewer(palette = "Dark2") +
-  labs( x = "End Date of Current Week",
-        y = "Weekly Ratio",
-        #title = "Change in weekly cases/deaths total as ratio of previous week",
-        subtitle = "New Cases (Source: PHS)") +
-  theme_bw(base_size = 10) +
-  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm")) +
-    coord_cartesian(ylim=c(min(wk_gr_newcases_agr_plt$ratio_m)*0.8, max(wk_gr_newcases_agr_plt$ratio_m)*1.4))
-
-ggsave("weekly_ratios_cases_age_group_ci.png", width = 9, height = 6, units = "in", dpi = 200)
-ggsave("weekly_ratios_cases_age_group_noci.png", width = 9, height = 6, units = "in", dpi = 200)
-
-
 # Import CA data
 data_ca <- read_csv("https://www.opendata.nhs.scot/dataset/b318bddf-a4dc-4262-971f-0ba329e09b87/resource/427f9a25-db22-4014-a3bc-893b68243055/download/trend_ca_20201027.csv")
 
-#ca_map <- sf::read_sf("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/infuse_dist_lyr_2011/infuse_dist_lyr_2011.shp")
-#ca_map$geo_label <- recode(ca_map$geo_label, "Edinburgh, City of" = "City of Edinburgh", 
-#                                             "Eilean Siar" =   "Na h-Eileanan Siar")
-#ca_map <- filter(ca_map, geo_label %in% unique(data_ca$CAName))
-#ca_map_simp <- st_simplify(ca_map, preserveTopology = TRUE, dTolerance = 1000)
-
+# ca_map <- sf::read_sf("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/infuse_dist_lyr_2011/infuse_dist_lyr_2011.shp")
+# ca_map$geo_label <- recode(ca_map$geo_label, "Edinburgh, City of" = "City of Edinburgh",
+#                                               "Eilean Siar" =   "Na h-Eileanan Siar")
+# ca_map <- filter(ca_map, geo_label %in% unique(data_ca$CAName))
+# ca_map_simp <- st_simplify(ca_map, preserveTopology = TRUE, dTolerance = 1000)
+# 
+# save(ca_map_simp, file= "ca_map_simp.rda" )
+load("ca_map_simp.rda") 
+ 
 ca_pop <- read_csv("council-area-profiles-dataset-with-copyright/council-area-profiles-dataset-with-copyright_population-estimates.csv") %>%
   filter(Year == 2019)
 
@@ -710,7 +700,9 @@ data_ca <- data_ca %>%
   left_join(ca_pop, by = c("CAName" = "Council area")) %>%
   mutate(CAName = factor(CAName, levels = ca2hb$CA)) %>%
   mutate(new_cases_pop_100000 = 100000*new_cases/Pop,
-         new_deaths_pop_100000 = 100000*new_deaths/Pop)
+new_deaths_pop_100000 = 100000*new_deaths/Pop) #%>%
+  #filter(date < (Sys.Date()-days(1)))  #remove today's data
+
 
 wk_gr_newcases_ca <- data_ca %>% rename("outcome" = new_cases) %>%
   arrange(date) %>%
@@ -719,10 +711,10 @@ wk_gr_newcases_ca <- data_ca %>% rename("outcome" = new_cases) %>%
   mutate(gr = map(data, ~weekly_ratios(.x))) %>%
   unnest(gr) %>%
   filter(date >= ymd("2020-03-23")) %>%
-  filter(!is.na(ratio) & !is.infinite(ratio))  %>%
+  #filter(!is.na(ratio) & !is.infinite(ratio))  %>%
   significance_wk() 
 
-#ca_map_simp <- left_join(ca_map_simp, wk_gr_newcases_ca, by = c("geo_label" = "CAName"))
+ca_map_simp <- left_join(ca_map_simp, wk_gr_newcases_ca, by = c("geo_label" = "CAName"))
 #write_csv(x= data.frame(CA = unique(data_ca$CAName), Health_board = ""),
 #          "ca2healthboard.csv")
 
@@ -912,7 +904,7 @@ data.frame(Days_after_lockdown = c(14,21,28,35),
 ```
 
 
-Numbers of new cases and new deaths, as reported by Public Health Scotland (PHS), have been monitored on a daily basis (Figure \@ref(fig:dailydeathscases)). To assess the rate of spread of COVID-19 in Scotland, we have considered the ratio of the sum of these metrics in the past week compared to their respective sums in the previous week. A similar ratio has been used to measure changes in the number of patients in hospital by comparing daily numbers of patients in hospital and ICU to those one week ago. However, these statistics are potentially subject to biases and we list several caveats which should be considered when interpreting their values.
+Numbers of new cases and new deaths, as reported by Public Health Scotland (PHS), have been monitored on a daily basis (Figure \@ref(fig:casesdeathsposrate)). To assess the rate of spread of COVID-19 in Scotland, we have considered the ratio of the sum of these metrics in the past week compared to their respective sums in the previous week. A similar ratio has been used to measure changes in the number of patients in hospital by comparing daily numbers of patients in hospital and ICU to those one week ago. However, these statistics are potentially subject to biases and we list several caveats which should be considered when interpreting their values.
 
 
 \subsection*{Data}
@@ -928,8 +920,11 @@ We have used ratios of both cases and deaths in the past week compared to the pr
 
 Ratios for patients in hospital are calculated as the number of patients in hospital (or ICU) on a given day compared to the number of patients in hospital (or ICU) one week before (e.g. the ratio for `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-lubridate::days(1)))` is ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-lubridate::days(1)))`’ divided by ‘number of patients on `r gsub(", [0-9]+", "", toOrdinalDate(Sys.Date()-8))`’).
 
-<!--Graphs of frequencies and ratios are provided separately for each health board in Figures \@ref(fig:cases) to \@ref(fig:deaths).
+
+<!--Graphs of rates and ratios are provided separately for each Local Authority in Figures \@ref(fig:casespopla) to \@ref(fig:wkrtcasesla).
 -->
+Graphs displaying case data at national level (Figures \@ref(fig:casesdeathsposrate) and \@ref(fig:deathscaseshospicu)) use ‘case reported date’, whereas graphs by age and by local authority are shown by specimen date (Figures \@ref(fig:casespopla) and \@ref(fig:wkrtcasesla)). As test results may take several days to be reported, graphs displaying cases by specimen date omit the last four days in order to avoid under-reporting bias.
+
 Further detail on the sources of data and code used to produce this report, and the method used to calculate confidence intervals for ratios, is available on GitHub at [gcalder/COVID-19](https://github.com/gcalder/COVID-19).
 
 <!--The confidence interval for the log of the ratio of two frequencies (w1/w2) may be approximated by {1/w1 + 1/w2}, based on assuming a Poisson distribution for w1 and w2 (w1 = total cases (or deaths) in past week and w2 = total cases (or death) in previous week, or for number of patients in hospital w1=number of patients on the given day, w2=number of patients on that day the week before). The approximation is obtained from the standard formula: 
@@ -1007,7 +1002,7 @@ The use of weekly ratios helps to smooth out variations occurring across week da
 
 The confidence intervals indicate the accuracy of the observed ratio of the two particular weeks considered. However, there are many factors which influence the ratios other than the true underlying rate of spread of COVID-19. Some of these will be systematic (as described in the above caveats) and others may be more random. The caveats should all be considered when interpreting the ratios, particularly when the confidence interval does not include 1. 
 
-The weekly ratios will be less accurate when numbers are smaller, particularly for ICU numbers and deaths, and when calculated separately for health boards. When there have been no occurrences in the past week but one or more in the previous week, then the resulting zero ratios are shown. Low accuracy (and hence wide confidence intervals) is most noticeable in the early part of the epidemic and become apparent again when numbers reduced. 
+The weekly ratios will be less accurate when numbers are smaller, particularly for ICU numbers and deaths, and when calculated separately for local authorities. When there have been no occurrences in the past week but one or more in the previous week, then the resulting zero ratios are shown. Low accuracy (and hence wide confidence intervals) is most noticeable in the early part of the epidemic and become apparent again when numbers reduced. 
 
 There is some analogy between the ratios presented and the R number, and values of less than 1 (or greater than 1) might be expected to correspond to R numbers of less than (or greater than) 1. While their values will not be identical, a rudimentary conversion based on a serial interval of 6.48 days (as used in the ICL model) indicates they would be similar. For example, a ratio of 0.70 would correspond to R=0.72, a ratio of 0.80 to R=0.813, and a ratio of 0.90 to R=0.91 (R=Ratio\textsuperscript{(6.48/7)}). However, this analogy assumes uniform reporting over the two week period used to calculate each ratio. Furthermore it should be borne in mind that each statistic reflects a different manifestation of the virus, and none are fully representative of the true underlying rate of spread of infection in the whole population. Death ratios are heavily influenced by the rate of spread to and within older age groups, and take less account of the rate of spread in younger age groups. Similarly, cases and hospital in-patients predominantly include those with more severe symptoms, and so do not fully capture the rate of infection spread within the whole population. Nevertheless these statistics have clear value for monitoring the impact of the virus on health service requirements, and will still serve as broad indicators of the underlying rate of spread of the virus occurring 3-4 weeks earlier. 
 
@@ -1064,7 +1059,7 @@ ggplot(cases_deaths) +
 \newpage
 \blandscape
 
-```{r, fig.width=11, fig.height=7, dailydeathscases, fig.cap = "Daily cases, deaths and positivity rate and 7 day rolling averages. Positivity rate refers to the percentage of people testing positive out of the total number of people tested each day."}
+```{r casesdeathsposrate, fig.width=9, fig.height=3, fig.cap = "Daily cases and deaths and 7 day rolling averages."}
 
 fig1 <- scot_data %>%
   select(new_cases, date) %>%
@@ -1099,7 +1094,7 @@ ggplot() +
 
 fig1 <- ggdraw() +
   draw_plot(fig1) +
-  draw_plot(fig1_inset, x = 0.45, y = .64, width = .41, height = .31) 
+  draw_plot(fig1_inset, x = 0.37, y = .64, width = .41, height = .31) 
 
 
 fig2 <- scot_deaths %>%
@@ -1240,7 +1235,8 @@ fig4 <- ggdraw() +
   draw_plot(fig4) +
   draw_plot(fig4_inset, x = 0.45, y = .64, width = .41, height = .31) 
 
-fig1 + fig2 + fig4 + plot_spacer()
+#fig1 + fig2 + fig4 + plot_spacer()
+fig1 + fig2
 ```
 
 
@@ -1296,7 +1292,7 @@ ggplot() +
 fig1 + fig2 + plot_spacer() + fig3
 ```
 
-\newpage
+
 ```{r dailyoccupancy, fig.width=9, fig.height=3, fig.cap="The number of patients in hospital and ICU with confirmed COVID-19 at midnight on the date shown. The dashed line highlights the date on which the definition used to count patients in hospital was changed.", eval = TRUE}
 fig6 <- data_hosp %>%
   mutate(rolling_av = zoo::rollmean(Hospital_total, k = 7, align = "right", fill = NA)) %>%
@@ -1402,7 +1398,7 @@ fig2_inset <- ggplot(wk_gr_newdeaths %>% filter(!is.na(ratio) &
   geom_line(colour = nice_red) +
   geom_point(colour = nice_red, size = 1) +
   scale_x_date(date_breaks = "12 days", labels = date_format("%b %d"),expand = expansion(mult = 0.1)) +
-  scale_y_continuous(trans = "log10") +
+  scale_y_continuous(trans = "log10", breaks = c(0.5,1,2)) +
   labs( x = "",
         y = "") +
   theme_bw(base_size = 8) +
@@ -1527,13 +1523,13 @@ fig1_inset <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) &
   geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_blue) +
-  geom_point(colour = nice_blue, size = 1) +
+  geom_point(colour = nice_blue, size = 0.7) +
   scale_x_date(date_breaks = "8 days", labels = date_format("%b %d")) +
-  scale_y_continuous(trans = "log10", limits = c(0.60, NA),
-                     breaks = c(1, 1.2, 1.5, 2)) +
+  scale_y_continuous(trans = "log10", #limits = c(0.60, NA),
+                     breaks = c(0.8,1, 1.2, 1.5, 2)) +
   labs( x = "", y = "") +
   theme_bw(base_size = 8) +
-  theme(plot.margin = margin(0, 0, -1, 0, "cm"))
+  theme(plot.margin = margin(0, 0, -1, 0, "cm")) 
 
 fig1 <- ggdraw() +
   draw_plot(fig1) +
@@ -1574,19 +1570,19 @@ fig2_inset <- ggplot(wk_gr_newdeaths_adj_mainplot %>% filter(!is.na(ratio) &
   geom_errorbar(width = 0, alpha = 0.4, aes(colour = ci)) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(aes(colour = line, group = 1)) +
-  geom_point(size = 1, aes(colour = ci)) +
+  geom_point(size = 0.7, aes(colour = ci)) +
   scale_x_date(date_breaks = "8 days", labels = date_format("%b %d")#,expand = expansion(mult = 0.1)
                ) +
   scale_colour_manual(values = c(nice_red, "grey50")) + #CHANGE
   scale_fill_manual(values = c("grey50", nice_red)) +
-    scale_y_continuous(trans = "log10",
-                     breaks = c(0.1, 0.5, 1, 3, 10)) +
+    scale_y_continuous(trans = "log10", breaks = c(0.7,1,1.5)) +
   labs( x = "",
         y = "") +
   theme_bw(base_size = 8) +
   theme(plot.margin = margin(0, 0, -1, 0, "cm"), 
         legend.position = "none") +
-    coord_cartesian(ylim=c(NA, 10.1))
+    coord_cartesian(ylim=c(NA,NA)) 
+  
 
 # fig2 <- ggplot(wk_gr_newdeaths_adj %>% filter(!is.na(ratio) & 
 #               !is.infinite(ratio) & date >= dmy("23-03-2020"))) +
@@ -1669,7 +1665,7 @@ fig3_inset <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) &
   geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_green) +
-  geom_point(colour = nice_green, size = 1) +
+  geom_point(colour = nice_green, size = 0.7) +
   scale_x_date(date_breaks = "10 days", labels = date_format("%b %d")) +
   scale_y_continuous(trans = "log10", limits = c(0.75, NA),
                      breaks = c(0.8, 1, 1.5, 2, 3)) +
@@ -1713,7 +1709,7 @@ fig4_inset <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) &
   geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
   geom_line(colour = nice_orange) +
-  geom_point(colour = nice_orange, size = 1) +
+  geom_point(colour = nice_orange, size = 0.7) +
   scale_x_date(date_breaks = "10 days", labels = date_format("%b %d")) +
   scale_y_continuous(trans = "log10") +
   labs( x = "",
@@ -1725,368 +1721,19 @@ fig4 <- ggdraw() +
   draw_plot(fig4) +
   draw_plot(fig4_inset, x = 0.50, y = .66, width = .44, height = .20)
 
+
+gridExtra::grid.arrange(fig1, fig2, fig3, fig4, nrow = 4) 
 ```
 
 \restoregeometry
-
-```{r deathscaseshospicuratioportrait}
-  fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("3-09-2020"))) +
-  aes(x = date, y = ratio,
-    ymin = lci, ymax = uci) +
-geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(colour = nice_blue) +
-  geom_point(colour = nice_blue, size = 0.5) +
-  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
-               limits = c(dmy("2-09-2020"), NA), expand = c(0.015, 0)) +
-  scale_y_continuous(trans = "log10",
-                         breaks = c(0.5, 1,2,3),
-                         limits = c(NA, 3.2),
-                         #labels = c(0.5, 1,3,6),
-                         expand = expansion(mult = 0.1)) +
-  labs( x = "End Date of Current Week",
-        y = "Weekly Ratio",
-        #title = "Change in weekly cases/deaths total as ratio of previous week",
-        subtitle = "New Cases (Source: PHS)") +
-  theme_bw(base_size = 10) +
-  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm"))
-fig1
-
-fig2 <- ggplot(wk_gr_newdeaths_adj_mainplot %>% filter(!is.na(ratio) & 
-              !is.infinite(ratio) & date >= dmy("03-09-2020"))) +
-  aes(x = date, y = ratio_m,
-    ymin = lci, ymax = uci) +
-  geom_errorbar(width = 0, alpha = 0.4, aes(colour = ci)) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(aes(colour = line, group = 1)) +
-  geom_point(size = 0.5, aes(colour = ci)) +
-  scale_y_continuous(trans = "pseudo_log",
-                         expand = expansion(mult = 0.1),
-                     breaks = c(1,3,10,30,60),
-                     limits = c(NA, 40),
-                     #labels = c(0.5, 1,3,10,30)
-                     ) +
-  geom_text(aes(x = date, label = symbol), y =0.5, colour = "#009E73") +
-  #scale_x_date(date_labels = "%b %d", date_breaks = "1 week") +
-  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
-               limits = c(dmy("2-09-2020"), NA), expand = c(0.015, 0)) +
-  #scale_colour_manual(values = c("grey50", nice_red)) +
-  #scale_fill_manual(values = c("grey50", nice_red)) +
-  labs( x = "End Date of Current Week",
-        y = "Weekly Ratio",
-        subtitle = "New Deaths (Source: PHS)") +
-  theme_bw(base_size = 10) + 
-  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm"), 
-        legend.position = "none") +
-    coord_cartesian(ylim=c(NA, 15))
-fig2
-
-wk_gr_hosp_hosp <- 
-  wk_gr_hosp_hosp %>%
-  mutate(ratio_m = case_when(date <= dmy("16/9/2020") & date >= dmy("10/9/2020") ~ NA_real_, 
-                             TRUE ~ ratio_m),
-         lci = case_when(date <= dmy("16/9/2020") & date >= dmy("10/9/2020") ~ NA_real_,
-                             TRUE ~ lci),
-         uci = case_when(date <= dmy("16/9/2020") & date >= dmy("10/9/2020") ~ NA_real_,
-                             TRUE ~ uci)) %>%
-  filter(date > dmy("16/9/2020") | date < dmy("10/9/2020"))
-  
-
-fig3 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
-              !is.infinite(ratio_m) & date >= dmy("3-09-2020"))) +
-  aes(x = date, y = ratio_m,
-    ymin = lci, ymax = uci) +
-  geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.1) +
-  geom_line(colour = nice_green) +
-  geom_point(colour = nice_green, size = 0.5) +
-  scale_y_continuous(trans = "log10",
-                     breaks = c(1,2, 3,6, 12),
-                     limits = c(NA, 3.2),
-                     #labels = c(0.8, 1,2, 3),
-                     expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
-               limits = c(dmy("2-09-2020"), NA), expand = c(0.015, 0)) +
-  labs( x = "Current Date",
-        y = "Day-Of-The-Week Ratio",
-        subtitle = "Patients in Hospital (Source: NHS Boards)") +
-  theme_bw(base_size = 10)  + 
-  theme(plot.margin = unit(c(0.2,0.4,0.2,0.3), "cm"))
-
-fig3
-
-fig4 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
-              !is.infinite(ratio_m) & date >= dmy("3-09-2020"))) +
-  aes(x = date, y = ratio_m,
-    ymin = lci, ymax = uci) +
-  geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(colour = nice_orange) +
-  geom_point(colour = nice_orange, size = 0.5) +
-  scale_y_continuous(trans = "log10",
-                         breaks = c(1,3,10,30),
-                         #labels = c(0.5, 1, 3, 10),
-                         limits = c(NA, 8),
-                         expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
-               limits = c(dmy("2-09-2020"), NA), expand = c(0.015, 0)) +
-  labs( x = "Current Date",
-        y = "Day-Of-The-Week Ratio",
-        subtitle = "Patients in ICU (Source: NHS Boards)") +
-  theme_bw(base_size = 10)  + 
-  theme(plot.margin = unit(c(0.2,0.4,0.2,0.3), "cm")) +
-    coord_cartesian(ylim=c(0.32, NA))
-
-png("weekly_ratios_4_metrics.png", height = 11.69, width = 7, units = "in", res = 400)
-gridExtra::grid.arrange(fig1, fig2, fig3, fig4, nrow = 4) 
-dev.off()
-
-```
-
-
-
-```{r deathscaseshospicuratiotimeline}
-  fig1 <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("3-09-2020"))) +
-  aes(x = date, y = ratio,
-    ymin = lci, ymax = uci) +
-  geom_vline(xintercept=(dmy("29/8/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Schools re-open (Aug 11)",y = 3.2, x = dmy("29/8/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_segment(aes(x = dmy("29/8/2020"), y = 9.5, xend = dmy("27/8/2020"), yend = 9.5),
-                  arrow = arrow(length = unit(0.1, "cm"))) +
-  geom_vline(xintercept=(dmy("1/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Local restrictions",y = 4, x = dmy("1/9/2020"), angle=90, size = 3, vjust= -0.5) +  
-  geom_vline(xintercept=(dmy("13/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Universities re-open",y = 4, x = dmy("13/9/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_vline(xintercept=(dmy("14/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Rule of 6",y = 4, x = dmy("14/9/2020"), angle=90, size = 3, vjust= 1.5) +  
-  geom_vline(xintercept=(dmy("25/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Pubs to close early",y = 4, x = dmy("25/9/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_vline(xintercept=(dmy("9/10/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Hospitality & \nCentral Belt restrictions",y = 4, x = dmy("9/10/2020"), angle=90, size = 3, vjust= -0.2, lineheight = 1) +geom_vline(xintercept=(dmy("2/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Tier system",y = 4, x = dmy("2/11/2020"), angle=90, size = 3, vjust= -0.5) +  
-  geom_vline(xintercept=(dmy("20/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Tiers changed",y = 4, x = dmy("20/11/2020"), angle=90, size = 3, vjust= -0.5) +  
-geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(colour = nice_blue) +
-  geom_point(colour = nice_blue, size = 0.5) +
-  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
-               limits = c(dmy("27-08-2020"), NA), expand = c(0.015, 0)) +
-  scale_y_continuous(trans = "log10",
-                         breaks = c(0.5, 1,2,3, 6),
-                         limits = c(NA, 10),
-                         expand = expansion(mult = 0.1)) +
-  labs( x = "End Date of Current Week",
-        y = "Weekly Ratio",
-        #title = "Change in weekly cases/deaths total as ratio of previous week",
-        subtitle = "New Cases (Source: PHS)") +
-  theme_bw(base_size = 10) +
-  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm"))
-fig1
-
-df_school_hols <- data.frame(start = c(dmy("14/09/2020"), dmy("05/10/2020")), end = c(dmy("28/09/2020"), dmy("26/10/2020")), ymin=-Inf, ymax = Inf)
-
-
-
-fig1_shade <- ggplot(wk_gr_newcases %>% filter(!is.na(ratio) & date >= dmy("3-09-2020"))) +
-  aes(x = date, y = ratio,
-    ymin = lci, ymax = uci) +
-  geom_rect(xmin=dmy("14/09/2020"), xmax=dmy("28/09/2020"), ymin=-Inf, ymax=Inf, fill = "thistle2",alpha =0.02 ) +
-  geom_rect(xmin=dmy("5/10/2020"), xmax=dmy("26/10/2020"), ymin=-Inf, ymax=Inf, fill = "thistle2",alpha = 0.02) +
-  geom_vline(xintercept=(dmy("29/8/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Schools re-open (Aug 11)",y = 3.2, x = dmy("29/8/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_segment(aes(x = dmy("29/8/2020"), y = 9.5, xend = dmy("27/8/2020"), yend = 9.5),
-                  arrow = arrow(length = unit(0.1, "cm"))) +
-  geom_vline(xintercept=(dmy("1/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Local restrictions",y = 4, x = dmy("1/9/2020"), angle=90, size = 3, vjust= -0.5) +  
-  geom_vline(xintercept=(dmy("13/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Universities re-open",y = 4, x = dmy("13/9/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_vline(xintercept=(dmy("14/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Rule of 6",y = 4, x = dmy("14/9/2020"), angle=90, size = 3, vjust= 1.5) +  
-  geom_vline(xintercept=(dmy("25/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Pubs to close early",y = 4, x = dmy("25/9/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_vline(xintercept=(dmy("9/10/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Hospitality & \nCentral Belt restrictions",y = 4, x = dmy("9/10/2020"), angle=90, size = 3, vjust= -0.2, lineheight = 1) +geom_vline(xintercept=(dmy("2/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Tier system",y = 4, x = dmy("2/11/2020"), angle=90, size = 3, vjust= -0.5) +  
-  geom_vline(xintercept=(dmy("20/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Tiers changed",y = 4, x = dmy("20/11/2020"), angle=90, size = 3, vjust= -0.5) + 
-geom_errorbar(width = 0, colour = nice_blue, alpha = 0.4) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(colour = nice_blue) +
-  geom_point(colour = nice_blue, size = 0.5) +
-  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
-               limits = c(dmy("27-08-2020"), NA), expand = c(0.015, 0)) +
-  scale_y_continuous(trans = "log10",
-                         breaks = c(0.5, 1,2,3, 6),
-                         limits = c(NA, 10),
-                         #labels = c(0.5, 1,3,6),
-                         expand = expansion(mult = 0.1)) +
-  labs( x = "End Date of Current Week",
-        y = "Weekly Ratio",
-        #title = "Change in weekly cases/deaths total as ratio of previous week",
-        subtitle = "New Cases (Source: PHS)") +
-  theme_bw(base_size = 10) +
-  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm"))
-
-
-fig1_shade
-
-ggsave("weekly_ratios_cases_timeline_school_closures_shade.png", fig1_shade, width = 9, height = 2.8, units = "in", dpi = 400)
-
-
-fig2 <- ggplot(wk_gr_newdeaths_adj_mainplot %>% filter(!is.na(ratio) & 
-              !is.infinite(ratio) & date >= dmy("03-09-2020"))) +
-  aes(x = date, y = ratio_m,
-    ymin = lci, ymax = uci) +
-    geom_vline(xintercept=(dmy("29/8/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Schools re-open (Aug 11)",y = 9, x = dmy("29/8/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_segment(aes(x = dmy("29/8/2020"), y = 40, xend = dmy("27/8/2020"), yend = 40),
-                  arrow = arrow(length = unit(0.1, "cm"))) +
-  geom_vline(xintercept=(dmy("1/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Local restrictions",y = 13, x = dmy("1/9/2020"), angle=90, size = 3, vjust= -0.5) +  
-  geom_vline(xintercept=(dmy("13/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Universities re-open",y = 13, x = dmy("13/9/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_vline(xintercept=(dmy("14/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Rule of 6",y = 13, x = dmy("14/9/2020"), angle=90, size = 3, vjust= 1.5) +  
-  geom_vline(xintercept=(dmy("25/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Pubs to close early",y = 13, x = dmy("25/9/2020"), angle=90, size = 3, vjust= -0.5) +   geom_vline(xintercept=(dmy("9/10/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Hospitality & \nCentral Belt restrictions",y = 13, x = dmy("9/10/2020"), angle=90, size = 3, vjust= -0.2, lineheight = 1) +geom_vline(xintercept=(dmy("2/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  geom_vline(xintercept=(dmy("2/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Tier system",y = 13, x = dmy("2/11/2020"), angle=90, size = 3, vjust= -0.5) + 
-  geom_vline(xintercept=(dmy("20/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Tiers changed",y = 4, x = dmy("20/11/2020"), angle=90, size = 3, vjust= -0.5) + 
-  geom_errorbar(width = 0, alpha = 0.4, aes(colour = ci)) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(aes(colour = line, group = 1)) +
-  geom_point(size = 0.5, aes(colour = ci)) +
-  scale_y_continuous(trans = "pseudo_log",
-                         expand = expansion(mult = 0.1),
-                     breaks = c(1,3,10,30,60),
-                     limits = c(NA, 40),
-                     #labels = c(0.5, 1,3,10,30)
-                     ) +
-  geom_text(aes(x = date, label = symbol), y =0.5, colour = "#009E73") +
-  #scale_x_date(date_labels = "%b %d", date_breaks = "1 week") +
-  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
-               limits = c(dmy("27-08-2020"), NA), expand = c(0.015, 0)) +
-  #scale_colour_manual(values = c("grey50", nice_red)) +
-  #scale_fill_manual(values = c("grey50", nice_red)) +
-  labs( x = "End Date of Current Week",
-        y = "Weekly Ratio",
-        subtitle = "New Deaths (Source: PHS)") +
-  theme_bw(base_size = 10) + 
-  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm"), 
-        legend.position = "none")
-fig2
-
-png("weekly_ratios_cases_deaths_timeline.png", width = 9, height = 6, units = "in", res = 400)
-gridExtra::grid.arrange(fig1, fig2, nrow = 2)
-dev.off()
-
-wk_gr_hosp_hosp <- 
-  wk_gr_hosp_hosp %>%
-  mutate(ratio_m = case_when(date <= dmy("16/9/2020") & date >= dmy("10/9/2020") ~ NA_real_, 
-                             TRUE ~ ratio_m),
-         lci = case_when(date <= dmy("16/9/2020") & date >= dmy("10/9/2020") ~ NA_real_,
-                             TRUE ~ lci),
-         uci = case_when(date <= dmy("16/9/2020") & date >= dmy("10/9/2020") ~ NA_real_,
-                             TRUE ~ uci)) %>%
-  filter(date > dmy("16/9/2020") | date < dmy("10/9/2020"))
-  
-
-
-
-
-fig3 <- ggplot(wk_gr_hosp_hosp %>% filter(!is.na(ratio_m) & 
-              !is.infinite(ratio_m) & date >= dmy("3-09-2020"))) +
-  aes(x = date, y = ratio_m,
-    ymin = lci, ymax = uci) +
-  geom_vline(xintercept=(dmy("29/8/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Schools re-open (Aug 11)",y = 5.5, x = dmy("29/8/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_segment(aes(x = dmy("29/8/2020"), y = 20, xend = dmy("27/8/2020"), yend = 20),
-                  arrow = arrow(length = unit(0.1, "cm"))) +
-  geom_vline(xintercept=(dmy("1/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Local restrictions",y = 7, x = dmy("1/9/2020"), angle=90, size = 3, vjust= -0.5) +  
-  geom_vline(xintercept=(dmy("13/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Universities re-open",y = 7, x = dmy("13/9/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_vline(xintercept=(dmy("14/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Rule of 6",y = 7, x = dmy("14/9/2020"), angle=90, size = 3, vjust= 1.5) +  
-  geom_vline(xintercept=(dmy("25/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Pubs to close early",y = 7, x = dmy("25/9/2020"), angle=90, size = 3, vjust= -0.5) +   geom_vline(xintercept=(dmy("9/10/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Hospitality & \nCentral Belt restrictions",y = 8.5, x = dmy("9/10/2020"), angle=90, size = 3, vjust= -0.2, lineheight = 1) +geom_vline(xintercept=(dmy("2/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  geom_vline(xintercept=(dmy("2/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Tier system",y = 7, x = dmy("2/11/2020"), angle=90, size = 3, vjust= -0.5) + 
-  geom_errorbar(width = 0, colour = nice_green, alpha = 0.4) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.1) +
-  geom_line(colour = nice_green) +
-  geom_point(colour = nice_green, size = 0.5) +
-  scale_y_continuous(trans = "log10",
-                     breaks = c(1,2, 3,6, 12),
-                     limits = c(NA, 20),
-                     #labels = c(0.8, 1,2, 3),
-                     expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
-               limits = c(dmy("27-08-2020"), NA), expand = c(0.015, 0)) +
-  labs( x = "Current Date",
-        y = "Day-Of-The-Week Ratio",
-        subtitle = "Patients in Hospital (Source: NHS Boards)") +
-  theme_bw(base_size = 10)  + 
-  theme(plot.margin = unit(c(0.2,0.4,0.2,0.3), "cm"))
-
-fig3
-
-fig4 <- ggplot(wk_gr_hosp_icu %>% filter(!is.na(ratio_m) & 
-              !is.infinite(ratio_m) & date >= dmy("3-09-2020"))) +
-  aes(x = date, y = ratio_m,
-    ymin = lci, ymax = uci) +
-  geom_vline(xintercept=(dmy("29/8/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Schools re-open (Aug 11)",y = 6.5, x = dmy("29/8/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_segment(aes(x = dmy("29/8/2020"), y = 40, xend = dmy("27/8/2020"), yend = 40),
-                  arrow = arrow(length = unit(0.1, "cm"))) +
-  geom_vline(xintercept=(dmy("1/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Local restrictions",y = 10, x = dmy("1/9/2020"), angle=90, size = 3, vjust= -0.5) +  
-  geom_vline(xintercept=(dmy("13/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Universities re-open",y = 10, x = dmy("13/9/2020"), angle=90, size = 3, vjust= -0.5) +
-  geom_vline(xintercept=(dmy("14/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Rule of 6",y = 10, x = dmy("14/9/2020"), angle=90, size = 3, vjust= 1.5) +  
-  geom_vline(xintercept=(dmy("25/9/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Pubs to close early",y = 10, x = dmy("25/9/2020"), angle=90, size = 3, vjust= -0.5) +   geom_vline(xintercept=(dmy("9/10/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Hospitality & \nCentral Belt restrictions",y = 10, x = dmy("9/10/2020"), angle=90, size = 3, vjust= -0.2, lineheight = 1) +geom_vline(xintercept=(dmy("2/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  geom_vline(xintercept=(dmy("2/11/2020")), colour="grey11", linetype = "dashed", size = 0.5) +
-  annotate("text",label = "Tier system",y = 10, x = dmy("2/11/2020"), angle=90, size = 3, vjust= -0.5) + 
-  geom_errorbar(width = 0, colour = nice_orange, alpha = 0.4) +
-  geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2) +
-  geom_line(colour = nice_orange) +
-  geom_point(colour = nice_orange, size = 0.5) +
-  scale_y_continuous(trans = "log10",
-                         breaks = c(1,3,10,30),
-                         #labels = c(0.5, 1, 3, 10),
-                         limits = c(NA, 40),
-                         expand = expansion(mult = 0.1)) +
-  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d"),
-               limits = c(dmy("27-08-2020"), NA), expand = c(0.015, 0)) +
-  labs( x = "Current Date",
-        y = "Day-Of-The-Week Ratio",
-        subtitle = "Patients in ICU (Source: NHS Boards)") +
-  theme_bw(base_size = 10)  + 
-  theme(plot.margin = unit(c(0.2,0.4,0.2,0.3), "cm")) +
-    coord_cartesian(ylim=c(0.32, NA))
-
-png("weekly_ratios_hosp_icu_timeline.png", width = 9, height = 6, units = "in", res = 400)
-gridExtra::grid.arrange(fig3, fig4, nrow = 2)
-dev.off()
-
-```
-
-
-
 \newpage
 
 ```{r tabdeathscaseshospicu}
 bind_rows(wk_gr_newcases %>% filter(date == max(wk_gr_newcases$date)) %>% mutate(Measure = "New Cases (Source: PHS)"),
 wk_gr_newdeaths %>% filter(date == max(wk_gr_newdeaths$date)) %>% mutate(Measure = "New Deaths (Source: PHS)"),
-#wk_gr_hosp_hosp %>% filter(date == max(wk_gr_hosp_hosp$date)) %>% mutate(Measure = "Patients in Hospital (Source: NHS Boards)"),
-#wk_gr_hosp_icu %>% filter(date == max(wk_gr_hosp_icu$date)) %>% mutate(Measure = "Patients in ICU (Source: NHS Boards)")
+
+wk_gr_hosp_hosp %>% filter(date == max(wk_gr_hosp_hosp$date)) %>% mutate(Measure = "Patients in Hospital (Source: NHS Boards)"),
+wk_gr_hosp_icu %>% filter(date == max(wk_gr_hosp_icu$date)) %>% mutate(Measure = "Patients in ICU (Source: NHS Boards)")
 ) %>%
   mutate(Ratio = formatC(round(ratio_m,2), format='f', digits=2),
          lci = formatC(round(lci,2), format='f', digits=2),
@@ -2095,8 +1742,8 @@ wk_gr_newdeaths %>% filter(date == max(wk_gr_newdeaths$date)) %>% mutate(Measure
   select(Measure, Ratio, `95% CI`) %>%
 knitr::kable(
   booktabs = TRUE, escape = T,
-  caption = str_glue("Most recent estimates of ratios and their 95\\% confidence intervals (CI). Weekly ratios for new cases and new deaths are ratios of weekly sums. Date: ", format(max(wk_gr_newcases$date), '%d/%m/%Y'),".")
-  #caption = str_glue("Most recent estimates of ratios and their 95\\% confidence intervals (CI). Weekly ratios for new cases and new deaths are ratios of weekly sums. Day-of-the-week ratios for number of patients in hospital and ICU are ratios of daily counts, measured 7 days apart. Date: ", format(max(wk_gr_newcases$date), '%d/%m/%Y'),".")
+  #caption = str_glue("Most recent estimates of ratios and their 95\\% confidence intervals (CI). Weekly ratios for new cases and new deaths are ratios of weekly sums. Date: ", format(max(wk_gr_newcases$date), '%d/%m/%Y'),".")
+   caption = str_glue("Most recent estimates of ratios and their 95\\% confidence intervals (CI). Weekly ratios for new cases and new deaths are ratios of weekly sums. Day-of-the-week ratios for number of patients in hospital and ICU are ratios of daily counts, measured 7 days apart. Date: ", format(max(wk_gr_newcases$date), '%d/%m/%Y'),".")
   )
 ```
 
@@ -2104,29 +1751,32 @@ knitr::kable(
 \hfill \break
 \hfill \break
 
-```{r deathsno, fig.width=8,fig.cap="Number of deaths per week, compared by location and data source", eval = FALSE}
-ggplot(bind_rows(wk_gr_nps_nrs, wk_gr_newdeaths_latest) %>%
-         mutate(Location = factor(Location, levels = c("PHS", "NRS","Care Home", "Hospital","Home / Non-institution"))) %>%
-         mutate(Location2 = recode_factor(Location, "PHS" = "PHS", 
-                                            "NRS" = "NRS all COVID-19 deaths",
-                                            "Care Home" = "Care Home (CH)", 
-                                            "Hospital" = "Hospital", 
-                                            "Home / Non-institution" = "Home / Non-institution (HN)")),
-  aes(x = date, y = change,
-    colour = Location2, fill = Location2)) +
-  geom_line(position=position_dodge(width=1)) +
-  geom_point(size = 1, position=position_dodge(width=1)) +
+```{r casesratiobyage, fig.width=8,fig.cap="Weekly ratios for new cases by age group, plotted on a log10 scale. As the underlying data is cases by specimen date, the last 4 days of data are omitted in order to avoid under-reporting bias."}
+wk_gr_newcases_agr_plt <- wk_gr_newcases_agr %>% filter(date >= dmy("1/09/2020") & date < max(wk_gr_newcases_agr$date)-3)
+ggplot(wk_gr_newcases_agr_plt) +
+  aes(x = date, y = ratio,
+    ymin = lci, ymax = uci, colour = AgeGroup) +
+  #geom_errorbar(width = 0, alpha = 0.4) +
+  geom_hline(yintercept = 1, linetype = "dashed", size = 0.2) +
+  geom_line() +
+  geom_point( size = 1) +
+  scale_x_date(date_breaks = "2 weeks", labels = date_format("%b %d")) +
   scale_y_continuous(trans = "log10",
-                     breaks = c(1,10,20,50,100,200,500,1000),
-                         expand = expansion(mult = 0.1)) +
-  labs( x = "Week Ending",
-        y = "Weekly Deaths",
-        title = "Weekly deaths by location and data source", 
-        colour = "Location/Source",
-        fill = "Location/Source") +
-  scale_colour_brewer(palette = "Dark2") +
-  theme_bw(base_size = 12)
+                     #limits = c(0.5,8),
+expand = expansion(mult = 0.1)) +
+  #scale_color_brewer(palette = "Dark2") +
+  scale_color_manual(values = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "grey28", "#E6AB02", "#A6761D")) +
+  labs( x = "End Date of Current Week",
+        y = "Weekly Ratio",
+        #title = "Change in weekly cases/deaths total as ratio of previous week",
+        subtitle = "New Cases (Source: PHS)") +
+  theme_bw(base_size = 10) +
+  theme(plot.margin = unit(c(0.2,0.5,0.2,0.3), "cm")) +
+    coord_cartesian(ylim=c(min(wk_gr_newcases_agr_plt$ratio_m)*0.8, max(wk_gr_newcases_agr_plt$ratio_m)*1.4))
 ```
+
+
+
 
 ```{r weeklyratiosagegroup, fig.width=8,fig.cap="Ratio of new deaths during current week vs previous week, compared by age group. Data source: NRS", eval=FALSE}
 ggplot(wk_gr_nrs_deaths_age) +
@@ -2148,7 +1798,9 @@ ggplot(wk_gr_nrs_deaths_age) +
   theme_bw(base_size = 12)
 ```
 
+
 \newpage
+
 
 ```{r ratiosnrshpsloc, fig.width=8,fig.cap="Ratio of new deaths during current week vs previous week, compared by location and data source. Figure inset highlights the last date that both PHS and NRS data are available for.", eval = FALSE}
 
@@ -2617,7 +2269,7 @@ ggplot(aes(x = date, y = DailyDeaths,
 ```
 
 
-```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily cases by council area.",eval=FALSE}
+```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily cases by Local Authority.",eval=FALSE}
 ggplot(data_ca) +
    geom_bar(aes(x=date, y = new_cases, fill = Health_board), stat = "identity", position="dodge") +
   scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
@@ -2635,42 +2287,116 @@ ggplot(data_ca) +
         axis.text = element_text(size = 6))
 ```
 
+
+\newpage
 \newgeometry{top=1.5cm,bottom=1.5cm, left=1cm, right=1cm}
 
-```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily cases per 100,000 population by council area.", eval = FALSE}
+```{r casespopla7dayline, fig.width=8.5,fig.height = 10.5, fig.cap="New daily cases per 100,000 head of population, by local authority. In accordance with the Scottish Government's strategic framework, weekly rates are also displayed as black lines. As the underlying data is cases by specimen date, the last 4 days of data are omitted in order to avoid under-reporting bias. Local authorities are colour coded by the health board in which they sit.", eval = FALSE}
+ymax <- 7  
 data_ca %>% 
-  filter(date >= dmy("1/3/2020")) %>%
-  mutate(rolling_av = zoo::rollmean(new_cases_pop_100000, k = 7, align = "right", fill = NA)) %>%
-  #mutate(rolling_av = case_when(health_board %in% c("Western Isles", "Orkney") ~ NA_integer_,
-  #                               TRUE ~ as.integer(rolling_av))) %>%
+  filter(date >= dmy("1/9/2020") & date < max(data_ca$date)-3) %>%
+  group_by(CAName) %>%
+  arrange(CAName,date) %>%
+  mutate(rolling_av = zoo::rollmean(new_cases, k = 7, align = "right", fill = NA),
+         rolling_sum = zoo::rollsum(new_cases, k = 7, align = "right", fill = NA),
+         rolling_av_rate = 100000*rolling_av/Pop,
+         rolling_sum_rate = 100000*rolling_sum/Pop) %>%
+  mutate(rolling_av_rate = case_when(CAName %in% c("Shetland Islands", "Orkney Islands") ~ NA_real_,
+                                 TRUE ~ rolling_av_rate)) %>%
+  mutate(rolling_sum_rate = case_when(CAName %in% c("Shetland Islands", "Orkney Islands") ~ NA_real_,
+                                 TRUE ~ rolling_sum_rate)) %>%
 ggplot() +
-   geom_bar(aes(x=date, y = new_cases_pop_100000, fill = Health_board), stat = "identity", position="dodge") +
-  #geom_line(aes(x = date, y = rolling_av), colour = "black", size = 0.2) +
+  geom_bar(aes(x=date, y = new_cases_pop_100000, fill = Health_board), stat = "identity", position="dodge") +
+  #geom_line(aes(x = date, y = rolling_av_rate), colour = "black", size = 0.4) +
+  geom_line(aes(x = date, y = rolling_sum_rate/ymax), colour = "black", size = 0.4) +
+  #geom_point(aes(x = date, y = rolling_av_rate, colour = Health_board), size = 0, shape = 95) +
+  #geom_line(aes(x = date, y = rolling_av_rate, colour = Health_board), size = 0, shape = 95) +
   scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
-                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
+                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd"),
+                    guide = guide_legend(override.aes = list(linetype = 0, shape = 15, size =3))) +
+  #scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
+  #                             "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd"),
+  #                    guide = guide_legend(override.aes = list(linetype = 0,
+  #                                                                shape = 15, 
+  #                                                             size = 3))) + 
+  #scale_y_continuous(expand = expansion(mult = c(0,0.1))) +
+  scale_y_continuous(name = 'New Cases per 100K population (PHS)', sec.axis = sec_axis(~.*ymax, 
+                                                                   name = "Weekly rate per 100K population"),
+  expand = expansion(mult = c(0,0.1))) +
   facet_wrap(~CAName, strip.position = "top", ncol = 3#,
              #labeller =labeller(score = c("anaesthesia_pos"="Anaesthesia", "antibiotics_pos"="Antibiotics", "facility" = "Facility", "surgical_principles_pos" = "Surgical \nPrinciples", "wounds" = "Wounds"))
                                 ) +
-    theme(panel.spacing = unit(0, "lines"), 
-         strip.background = element_blank(),
+    theme(#panel.spacing = unit(0, "lines"), 
+          panel.spacing.y=unit(0.5, "lines"),
+          strip.background = element_blank(),
          strip.placement = "outside") +
-  labs(fill = "", x = "", y = "New Cases per 100,000 population (PHS)") +
+  labs(fill = "Health Board:", x = ""#, y = "New Cases per 100,000 population (PHS)"
+       ) +
   theme(legend.position = "top",
         panel.background = element_blank(),
         axis.line = element_line(colour = "black"),
-        axis.text = element_text(size = 6))
+        axis.text = element_text(size = 6),
+        legend.key = element_rect(colour = NA, fill = NA)
+        #legend.key.height = unit(0.3, "cm"),
+        #legend.key.width = unit(0.3, "cm")
+        )
 ```
 
 
-```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily cases per 100,000 population by council area.", eval = FALSE}
+```{r casespopla, fig.width=8.5,fig.height = 10.5, fig.cap="New daily cases per 100,000 head of population, by local authority. 7 day rolling averages are displayed as a black line. As the underlying data is cases by specimen date, the last 4 days of data are omitted in order to avoid under-reporting bias. Local authorities are colour coded by the health board in which they sit.", eval = TRUE}
 data_ca %>% 
-  filter(date >= dmy("1/3/2020")) %>%
-  mutate(rolling_av = zoo::rollmean(new_cases_pop_100000, k = 7, align = "right", fill = NA)) %>%
-  #mutate(rolling_av = case_when(health_board %in% c("Western Isles", "Orkney") ~ NA_integer_,
-  #                               TRUE ~ as.integer(rolling_av))) %>%
+  filter(date >= dmy("1/9/2020") & date < max(data_ca$date)-3) %>%
+  group_by(CAName) %>%
+  arrange(CAName,date) %>%
+  mutate(rolling_av = zoo::rollmean(new_cases, k = 7, align = "right", fill = NA), 
+         rolling_av_rate = 100000*rolling_av/Pop) %>%
+  mutate(rolling_av_rate = case_when(CAName %in% c("Shetland Islands", "Orkney Islands") ~ NA_real_,
+                                 TRUE ~ rolling_av_rate)) %>%
+ggplot() +
+  geom_bar(aes(x=date, y = new_cases_pop_100000, fill = Health_board), stat = "identity", position="dodge") +
+  geom_line(aes(x = date, y = rolling_av_rate), colour = "black", size = 0.4) +
+  #geom_point(aes(x = date, y = rolling_av_rate, colour = Health_board), size = 0, shape = 95) +
+  #geom_line(aes(x = date, y = rolling_av_rate, colour = Health_board), size = 0, shape = 95) +
+  scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
+                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd"),
+                    guide = guide_legend(override.aes = list(linetype = 0, shape = 15, size =3))) +
+  #scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
+  #                             "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd"),
+  #                    guide = guide_legend(override.aes = list(linetype = 0,
+  #                                                                shape = 15, 
+  #                                                             size = 3))) + 
+  scale_y_continuous(expand = expansion(mult = c(0,0.1))) +
+  facet_wrap(~CAName, strip.position = "top", ncol = 3#,
+             #labeller =labeller(score = c("anaesthesia_pos"="Anaesthesia", "antibiotics_pos"="Antibiotics", "facility" = "Facility", "surgical_principles_pos" = "Surgical \nPrinciples", "wounds" = "Wounds"))
+                                ) +
+    theme(#panel.spacing = unit(0, "lines"), 
+          panel.spacing.y=unit(0.5, "lines"),
+          strip.background = element_blank(),
+         strip.placement = "outside") +
+  labs(fill = "Health Board:", x = "", y = "New Cases per 100,000 population (PHS)") +
+  theme(legend.position = "top",
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.text = element_text(size = 6),
+        legend.key = element_rect(colour = NA, fill = NA)
+        #legend.key.height = unit(0.3, "cm"),
+        #legend.key.width = unit(0.3, "cm")
+        )
+```
+
+
+```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily cases per 100,000 population by Local Authority.", eval = FALSE}
+data_ca %>% 
+  filter(date >= dmy("1/9/2020") & date < max(data_ca$date)-3) %>%
+  group_by(CAName) %>%
+  arrange(CAName,date) %>%
+  mutate(rolling_av = zoo::rollmean(new_cases, k = 7, align = "right", fill = NA), 
+         rolling_av_rate = 100000*rolling_av/Pop) %>%
+  mutate(rolling_av_rate = case_when(CAName %in% c("Shetland Islands", "Orkney Islands") ~ NA_real_,
+                                 TRUE ~ rolling_av_rate)) %>%
 ggplot() +
    geom_bar(aes(x=date, y = new_cases_pop_100000, fill = Health_board), stat = "identity", position="dodge") +
-  #geom_line(aes(x = date, y = rolling_av), colour = "black", size = 0.2) +
+  geom_line(aes(x = date, y = rolling_av_rate), colour = "black", size = 0.4) +
   scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
                                "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
   facet_wrap(~CAName, strip.position = "top", scales = "free_y", ncol = 3#,
@@ -2687,11 +2413,17 @@ ggplot() +
 ```
 
 
-```{r fig.width=8.5,fig.height = 10.5, fig.cap="Daily deaths per 100,000 population by council area.", eval = FALSE}
-ggplot(data_ca) +
+
+```{r deathspopla, fig.width=8.5,fig.height = 10.5, fig.cap="New daily deaths per 100,000 head of population, by local authority. 7 day rolling averages are displayed as a black line. The last 4 days of data are omitted in order to avoid under-reporting bias. Local authorities are colour coded by the health board in which they sit.", eval = FALSE}
+data_ca %>% filter(date >= dmy("1/9/2020") & date < max(data_ca$date)-3) %>%
+group_by(CAName) %>%
+  arrange(CAName,date) %>%
+  mutate(rolling_av = zoo::rollmean(new_deaths, k = 7, align = "right", fill = NA), 
+         rolling_av_rate = 100000*rolling_av/Pop) %>%
+ggplot() +
    geom_bar(aes(x=date, y = new_deaths_pop_100000, fill = Health_board), stat = "identity", position="dodge") +
   scale_fill_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
-                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
+   "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
   facet_wrap(~CAName, strip.position = "top", ncol = 3#,
              #labeller =labeller(score = c("anaesthesia_pos"="Anaesthesia", "antibiotics_pos"="Antibiotics", "facility" = "Facility", "surgical_principles_pos" = "Surgical \nPrinciples", "wounds" = "Wounds"))
                                 ) +
@@ -2706,39 +2438,135 @@ ggplot(data_ca) +
 ```
 
 
-```{r fig.width=8.5,fig.height = 10.5, fig.cap = "Weekly ratios for new cases for the last 21 days for each council area. Weekly ratios for new cases are ratios of weekly sums, plotted on a log10 scale. Dotted red lines highlight a weekly ratio value of 1.", eval = FALSE}
-ggplot(wk_gr_newcases_ca %>% filter(date > max(data_ca$date)-20)) +
-  geom_rect(data=data.frame(xmin = max(data_ca$date)-3, xmax = max(data_ca$date), ymin = -Inf, ymax = Inf),
-    aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey", alpha=0.5) +
+```{r wkrtcasesla, fig.width=8.5,fig.height = 10.5, fig.cap = "Weekly ratios for new cases for the last 21 days, by local authority. Weekly ratios for new cases are ratios of weekly sums. Dotted red lines highlight a weekly ratio value of 1. Local authorities are colour coded by the health board in which they sit. As the underlying data is cases by specimen date, the last 4 days of data are omitted in order to avoid under-reporting bias.", eval = TRUE}
+ggplot(wk_gr_newcases_ca %>% filter(date > max(data_ca$date)-25 & date < max(data_ca$date)-3) %>%
+         filter(!is.na(ratio) & !is.infinite(ratio))) +
+  #geom_rect(data=data.frame(xmin = max(data_ca$date)-3, xmax = max(data_ca$date), ymin = -Inf, ymax = Inf),
+    #aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)) +
   geom_point(aes(x=date, y = ratio_m, colour = Health_board), size = 1) +
   geom_line(aes(x=date, y = ratio_m, colour = Health_board) ) +
   geom_hline(yintercept = 1, colour = "red", linetype = "dashed", size = 0.2, alpha = 0.7) +
   scale_colour_manual(values = c("#2f4f4f", "#006400","#8b0000","#000080", "#ff1493", "#ff8c00",#"#ffff00",
-                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd")) +
+                               "gold1","#deb887", "#00ff00", "#00bfff", "#0000ff","#ff00ff", "#8b4513", "#dda0dd"),
+                      guide = guide_legend(override.aes = list(linetype = 0,
+                                                                  shape = 15, 
+                                                               size = 6))) + 
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
   #facet_grid(Health_board~CAName, scales = "free_y") + 
   facet_wrap(~CAName, strip.position = "top", scales = "free_y", ncol = 3) +
-    theme(panel.spacing = unit(0, "lines"), 
+    theme(#panel.spacing = unit(0, "lines"), 
+          panel.spacing.y=unit(0.5, "lines"),
          strip.background = element_blank(),
          strip.placement = "outside") +
-  labs(fill = "", x = "", y = "New Cases Weekly Ratios") +
+  labs(colour = "Health Board:", fill = "", x = "", y = "Weekly Ratio of New Cases") +
   theme(legend.position = "top",
         panel.background = element_blank(),
         axis.line = element_line(colour = "black"),
-        axis.text = element_text(size = 6))
+        axis.text = element_text(size = 6),
+        legend.key = element_rect(colour = NA, fill = NA))
 ```
 
 \restoregeometry
 
+\newpage
+\blandscape
+
+```{r, fig.width=12, fig.cap= paste0("Maps showing weekly ratios of new cases by local authority on ", max(data_ca$date)-18, ", ", max(data_ca$date)-11, " and ",  max(data_ca$date)-4, ". Local authorities with smaller numbers of cases may be subject to higher volatility in trends and wider confidence intervals. Most recent estimates of weekly ratios and their confidence intervals are provided in Table 2 below. Ratios are not available (N/A) when there have been no cases in the period 8-14 days before the sampling date."), eval = TRUE}
+ca_map_simp2 <- ca_map_simp %>% 
+  #filter(date > max(data_ca$date)-7 & date < max(data_ca$date)-3)
+   filter(date %in% c(max(data_ca$date)-18, max(data_ca$date)-11,max(data_ca$date)-4))
+
+minimal_theme <- theme_minimal() +
+     theme(axis.line=element_blank(),
+      axis.text=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title=element_blank(),
+      panel.border = element_blank(),
+     panel.grid = element_blank(),
+     panel.background = element_blank())
+
+# group country cases into similar values
+breaks <- classIntervals(ca_map_simp2$ratio_m, n = 7, style = "jenks", na.rm=T)$brks
+breaks[1]= 0.0000001
+breaks[2]= 0.2
+breaks<- sort(breaks, decreasing = FALSE)
+
+# find groupings below 1 and above one to set red/green colours
+groups_less_than_one <- sum(breaks < 1)
+breaks[(groups_less_than_one + 1)] = 0.999999
+
+
+palredgreen <- brewer.pal(groups_less_than_one+1, name = "Greens")
+palredgreen <- c(rev(palredgreen)[1:(groups_less_than_one+1)],brewer.pal(7 - groups_less_than_one, name = "Reds"))
+#palredgreen<-c("#FFFFFF",palredgreen)
+breaks <- c(0,breaks)
+
+ca_map_simp2$ratio_m_cat <- cut(ca_map_simp2$ratio_m, breaks=c(breaks))
+#length(unique(ca_map_simp2$ratio_m_cat))
+ca_map_simp2$ratio_m_cat <- str_remove(ca_map_simp2$ratio_m_cat, "\\(") %>%
+                            str_remove("\\]") %>%
+                            str_replace(",", "-")
+map1 <- ggplot(data = ca_map_simp2) +
+    geom_sf(aes(fill = ratio_m, colour = ""), size = 0.2) +
+    #scale_fill_viridis_c(option = "inferno", trans = "sqrt", direction = -1) +
+  #scale_fill_gradient2(low = "darkgreen", mid = "orange",
+  #high = "red",midpoint = 1) +
+  scale_fill_gradientn(colours = palredgreen, values = rescale(breaks), limits = c(breaks[1], breaks[length(breaks)]), na.value = "black") + 
+  scale_colour_manual(values="black", name="No data") +
+    guides(
+    color = guide_legend(order = 2),
+    fill = guide_colorbar(order = 1)
+  ) +
+  guides(colour=guide_legend("N/A", override.aes=list(fill="black"))) +
+  minimal_theme + labs(fill = "Weekly\nRatio of\nnew cases") + #labs(title = "Weekly Ratio of Cases by Local Authority") +
+
+  facet_grid(. ~ date )
+
+map1
+
+map1 <- ggplot(data = ca_map_simp2) +
+    geom_sf(aes(fill = ratio_m_cat), size = 0.1) +
+  scale_fill_manual(values = palredgreen, guide = guide_legend(reverse = TRUE,title.vjust = 5, label.vjust =  -0.05), labels = round(breaks,2) ) +
+  minimal_theme + labs(fill = "Weekly\nRatio of\nnew cases") + #labs(title = "Weekly Ratio of Cases by Local Authority") +
+  facet_grid(. ~ date ) 
+```
+
+\elandscape
+
+```{r tabratiosca}
+wk_gr_newcases_ca %>% 
+  ungroup() %>% #is_grouped_df()
+  mutate(Health_board2 = case_when(Health_board %in% c("Orkney","Shetland", "Western Isles") ~ "Islands", 
+                                   TRUE ~ Health_board)) %>%
+  filter(date == max(wk_gr_newcases_ca$date)-4) %>%
+  select(CAName, ratio_m, lci, uci) %>%
+  rename("Local Authority" = CAName) %>%
+mutate(Ratio = formatC(round(ratio_m,2), format='f', digits=2),
+         lci = formatC(round(lci,2), format='f', digits=2),
+         uci = formatC(round(uci,2), format='f', digits=2)) %>%
+  mutate("95% CI" = paste0(lci, "-", uci)) %>% 
+  select(`Local Authority`, Ratio, `95% CI`) %>%
+  mutate(`Local Authority` = as.character(`Local Authority`)) %>%
+      arrange(`Local Authority`) %>% 
+knitr::kable(
+  booktabs = TRUE, escape = T, linesep = "",
+  caption = str_glue("Most recent estimates of weekly ratios for new cases and their 95\\% confidence intervals (CI), by local authority. Date: ", format(max(wk_gr_newcases_ca$date)-4, '%d/%m/%Y'),".")) 
+```
+
+
+
+
+
 
 
 
 \hfill \break
 \hfill \break
 
-This report was produced by Helen Brown^1^, Giles Calder-Gerver^2,\*^, Samuel Haynes^3^, Stella Mazeri^1^, Camille A Simonet^4^ and Mark Woolhouse^2,3^.
+This report was produced by Helen Brown^1^, Giles Calder-Gerver^2,\*^, Stella Mazeri^1^ and Mark Woolhouse^2,3^.
 \hfill \break
 
-Affiliations:^1^The Roslin Institute and The Royal (Dick) School of Veterinary Studies, University of Edinburgh, Edinburgh, UK. ^2^Usher Institute, University of Edinburgh, Edinburgh, UK. ^3^School of Biological Sciences, University of Edinburgh, Edinburgh, UK. ^4^Institute of Evolutionary Biology, School of Biological Sciences, University of Edinburgh, Edinburgh, UK \newline
+Affiliations:^1^The Roslin Institute and The Royal (Dick) School of Veterinary Studies, University of Edinburgh, Edinburgh, UK. ^2^Usher Institute, University of Edinburgh, Edinburgh, UK. ^3^School of Biological Sciences, University of Edinburgh, Edinburgh, UK. \newline
 
 
 ^\*^Email: g.calder@ed.ac.uk \newline

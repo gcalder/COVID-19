@@ -676,7 +676,7 @@ data_ca <- read_csv("https://www.opendata.nhs.scot/dataset/b318bddf-a4dc-4262-97
 # save(ca_map_simp, file= "ca_map_simp.rda" )
 load("ca_map_simp.rda") 
  
-ca_pop <- read_csv("/Users/smazeri/Documents/GitHub/COVID-19/covid_19/council-area-profiles-dataset-with-copyright/council-area-profiles-dataset-with-copyright_population-estimates.csv") %>%
+ca_pop <- read_csv("council-area-profiles-dataset-with-copyright/council-area-profiles-dataset-with-copyright_population-estimates.csv") %>%
   filter(Year == 2019)
 
 ca_pop <- ca_pop %>%
