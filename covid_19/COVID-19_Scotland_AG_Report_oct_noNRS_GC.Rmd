@@ -177,7 +177,6 @@ myurl_deaths <- "https://www.nrscotland.gov.uk/files//statistics/covid19/covid-d
 GET(myurl_deaths, write_disk(tmp <- tempfile(fileext = ".xlsx")))
 GET(myurl_deaths, write_disk("nrs.xlsx", overwrite = TRUE))
 
-
 #NRS weekly
 nrs_deaths_covid_raw <- read_excel(tmp, sheet = "Table 1", skip = 3) %>%
   select(-`Year to Date`) %>%
@@ -637,6 +636,10 @@ wk_gr_nps_nrs <- wk_gr_nps_nrs %>%
 # Import Age group data
 data_agr <- read_csv("https://www.opendata.nhs.scot/dataset/b318bddf-a4dc-4262-971f-0ba329e09b87/resource/9393bd66-5012-4f01-9bc5-e7a10accacf4/download/trend_agesex_20201105.csv")
 
+#Remove silly new 'super groups'
+data_agr <- data_agr [(!(data_agr$AgeGroup=="0 to 59") & !(data_agr$AgeGroup=="60+")),]
+
+
 data_agr_total <- data_agr %>%
   filter(Sex == "Total" & AgeGroup != "Total") %>%
   mutate(date = lubridate::ymd(Date)) %>%
@@ -1030,30 +1033,30 @@ cases_deaths_date <- subset(cases_deaths, date == arrow_date) %>%
                             yend_date = yend + c(122, 40))
 
 
-ggplot(cases_deaths) +
-    aes(x = cumulative, y = change, group = type, colour = type) +
-    geom_line(lwd = 1) +
-    geom_point(size = 0.7) +
-    scale_x_continuous(trans = "log10",
-                       expand = expansion(mult = 0.01), 
-                       limits = c(10, NA)) +
-    scale_y_continuous(trans = "log10",
-                       limits = c(min(filter(cases_deaths, cumulative >=10)$change, na.rm = TRUE), max(cases_deaths$change, na.rm = TRUE)+500),
-                       #expand = expansion(mult = 0.05)
-                       ) +
-    geom_segment(data = cases_deaths_date, colour = "black", aes(x = cumulative, y = y, xend = cumulative, yend = yend),
-               arrow = arrow(length = unit(2, "mm"), ends = "first")) +
-    geom_text(data = cases_deaths_date, colour = "black", aes(x = cumulative, y = yend_date, label = date)) +
-    guides(x = guide_axis(check.overlap = TRUE), y = guide_axis(check.overlap = TRUE)) +
-    theme(legend.position = "none") +
-    labs(y = str_glue("New cases/deaths \n(in the past 7 days)"),
-         x = str_glue("Total Number"),
-         title = str_glue("Trajectory of COVID-19 cases/deaths vs current total"), 
-         #subtitle = str_glue("Arrows = ", {as.character(arrow_date)}),
-         subtitle = str_glue("Starting date: ", {as.character(min(filter(cases_deaths, cumulative >=10)$date))}),
-         colour = "") +
-  theme_bw(base_size = 12) +
-  theme(legend.position = c(0.20, 0.85))
+# ggplot(cases_deaths) +
+#     aes(x = cumulative, y = change, group = type, colour = type) +
+#     geom_line(lwd = 1) +
+#     geom_point(size = 0.7) +
+#     scale_x_continuous(trans = "log10",
+#                        expand = expansion(mult = 0.01), 
+#                        limits = c(10, )) +
+#     scale_y_continuous(trans = "log10",
+#                        limits = c(min(filter(cases_deaths, cumulative >=10)$change, na.rm = TRUE), max(cases_deaths$change, na.rm = TRUE)+500),
+#                        #expand = expansion(mult = 0.05)
+#                        ) +
+#     geom_segment(data = cases_deaths_date, colour = "black", aes(x = cumulative, y = y, xend = cumulative, yend = yend),
+#                arrow = arrow(length = unit(2, "mm"), ends = "first")) +
+#     geom_text(data = cases_deaths_date, colour = "black", aes(x = cumulative, y = yend_date, label = date)) +
+#     guides(x = guide_axis(check.overlap = TRUE), y = guide_axis(check.overlap = TRUE)) +
+#     theme(legend.position = "none") +
+#     labs(y = str_glue("New cases/deaths \n(in the past 7 days)"),
+#          x = str_glue("Total Number"),
+#          title = str_glue("Trajectory of COVID-19 cases/deaths vs current total"), 
+#          #subtitle = str_glue("Arrows = ", {as.character(arrow_date)}),
+#          subtitle = str_glue("Starting date: ", {as.character(min(filter(cases_deaths, cumulative >=10)$date))}),
+#          colour = "") +
+#   theme_bw(base_size = 12) +
+#   theme(legend.position = c(0.20, 0.85))
 ```
 
 \newpage
@@ -1071,7 +1074,8 @@ ggplot() +
   scale_x_date(date_breaks = "4 weeks", labels = date_format("%b %d"),
                limits = c(ymd("2020-02-28"), NA)) +
   labs(x = "Date", y = "New Cases") +
-  theme_bw(base_size = 10)
+  theme_bw(base_size = 10) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 fig1_inset <- scot_data %>%
   select(new_cases, date) %>%
@@ -1107,7 +1111,8 @@ ggplot() +
   scale_x_date(date_breaks = "4 weeks", labels = date_format("%b %d"),
                limits = c(ymd("2020-02-28"), NA)) +
   labs(x = "Date", y = "New Deaths (Source: PHS)") +
-  theme_bw(base_size = 10)
+  theme_bw(base_size = 10) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 fig2_inset <- scot_deaths %>%
   select(new_deaths, date) %>%
@@ -1308,7 +1313,8 @@ fig6 <- data_hosp %>%
   annotate("text",label = "Definition change",y = max(data_hosp$Hospital_total, na.rm = T)/2, x = dmy("9/9/2020"), angle=90, size = 3, vjust= -0.5) +  
   theme(legend.position = c(0.17, 0.8), 
         legend.title = element_blank()) +
-  theme(plot.margin = unit(c(0,20,0,0), "pt"))
+  theme(plot.margin = unit(c(0,20,0,0), "pt")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 fig7 <- data_hosp %>%
   mutate(rolling_av = zoo::rollmean(ICU_total, k = 7, align = "right", fill = NA)) %>%
@@ -1323,7 +1329,8 @@ fig7 <- data_hosp %>%
   #geom_text(label = "Definition change",aes(y = max(data_hosp$ICU_total, na.rm = T)/2, x = dmy("9/9/2020")), angle=90, size = 2, vjust= -0.5) +  
   theme(legend.position = c(0.17, 0.8), 
         legend.title = element_blank()) +
-  theme(plot.margin = unit(c(0,5,0,20), "pt"))
+  theme(plot.margin = unit(c(0,5,0,20), "pt")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 fig6 + fig7
@@ -1765,7 +1772,7 @@ ggplot(wk_gr_newcases_agr_plt) +
                      #limits = c(0.5,8),
 expand = expansion(mult = 0.1)) +
   #scale_color_brewer(palette = "Dark2") +
-  scale_color_manual(values = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "grey28", "#E6AB02", "#A6761D")) +
+  scale_color_manual(values = c("#42C0FB","#1B9E77", "#D95F02", "#7570B3", "#E7298A", "grey28", "#E6AB02", "#A6761D")) +
   labs( x = "End Date of Current Week",
         y = "Weekly Ratio",
         #title = "Change in weekly cases/deaths total as ratio of previous week",
