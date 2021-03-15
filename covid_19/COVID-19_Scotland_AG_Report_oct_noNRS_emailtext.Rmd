@@ -41,7 +41,8 @@ weekly_ratios <- weekly_ratios_2
 #source("weekly_ratios_byday.R")
 
 # Import healthboard pop data 
-hb_pop <- read_csv("/Users/gcalder2/OneDrive - University of Edinburgh/GitRepos/COVID-19/covid_19/Scotland_Population_Size_By_HealthBoard.csv") %>%
+hb_pop <- #read_csv("/Users/gcalder2/OneDrive - University of Edinburgh/GitRepos/COVID-19/covid_19/Scotland_Population_Size_By_HealthBoard.csv") %>%
+  read_csv("Scotland_Population_Size_By_HealthBoard.csv") %>%
   select(Health_Board, Pop_Size) %>%
   slice(1:14) %>%
   mutate(health_board = str_replace(Health_Board, "and ", "& ")) %>%
@@ -377,7 +378,9 @@ scot_deaths <- data_deaths %>%
   rename("deaths" = `Number of COVID-19 confirmed deaths registered to date`) %>%
   mutate(date = lubridate::ymd(Date)) %>%
   select(date, deaths) %>%
-  mutate(new_deaths = c(1,diff(deaths, 1)))
+  mutate(new_deaths = c(1,diff(deaths, 1))) %>%
+  mutate(new_deaths = case_when(new_deaths == 207 & date == dmy("3/3/2021") ~ 35, 
+                                TRUE ~new_deaths))
 
 #Delete this
 #scot_deaths[nrow(data_deaths) + 1,] = list(as_datetime("2021-02-07"),6438,7)
@@ -679,7 +682,8 @@ data_ca <- read_csv("https://www.opendata.nhs.scot/dataset/b318bddf-a4dc-4262-97
 # save(ca_map_simp, file= "ca_map_simp.rda" )
 load("ca_map_simp.rda") 
  
-ca_pop <- read_csv("/Users/gcalder2/OneDrive - University of Edinburgh/GitRepos/COVID-19/covid_19/council-area-profiles-dataset-with-copyright/council-area-profiles-dataset-with-copyright_population-estimates.csv") %>%
+ca_pop <- #read_csv("/Users/gcalder2/OneDrive - University of Edinburgh/GitRepos/COVID-19/covid_19/council-area-profiles-dataset-with-copyright/council-area-profiles-dataset-with-copyright_population-estimates.csv") %>%
+  read_csv("council-area-profiles-dataset-with-copyright/council-area-profiles-dataset-with-copyright_population-estimates.csv") %>%
   filter(Year == 2019)
 
 ca_pop <- ca_pop %>%
